@@ -30,6 +30,8 @@ void keyboard_handler(u32 irq)
 void keyboard_read()
 {	
 	u8 scan_code;
+	char output[2] = {0, 0};
+
 	if (kb_in.count > 0)
 	{
 		disable_int();
@@ -44,7 +46,22 @@ void keyboard_read()
 
 		enable_int();
 
-		disp_int(scan_code);
+
+		if (scan_code == 0xE0)
+		{
+		}
+		else if (scan_code == 0xE1)
+		{
+		}
+		else
+		{
+			if (!(scan_code & 0x80))	/* 如果不是Break Code */
+			{
+				output[0] = keymap[scan_code * 3];
+				disp_color_str(output, 0x0c);
+//				disp_int(scan_code);
+			}
+		}
 	}
 }
 
