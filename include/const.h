@@ -45,6 +45,9 @@
 
 	#define INT_VECTOR_IRQ0 0x020
 	#define INT_VECTOR_IRQ1 0x028
+	#define	CLOCK_IRQ		0		
+	#define KEYBOARD_IRQ	1
+	
 
 
 	#define	PORT_M_ICW1		0x020
@@ -66,7 +69,7 @@
 	#define	HZ				100			/* 每10ms产生一次中断, 每秒 100 ticks */
 	
 
-	#define	CLOCK_IRQ		0
+
 
 
 

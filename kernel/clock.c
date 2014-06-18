@@ -2,7 +2,7 @@
 #include "type.h"
 #include "proto.h"
 #include "global.h"
-
+#include "proc.h"
 
 
 void schedule()

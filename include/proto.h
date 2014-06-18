@@ -68,6 +68,7 @@ void TestD();
 u32 sys_get_ticks();
 u32 get_ticks();
 void milli_delay(u32 milli_sec);
-
+void keyboard_handler(u32 vector_no);
+void init_keyboard();
 
 #endif

@@ -3,6 +3,7 @@
 #include "proto.h"
 #include "string.h"
 #include "global.h"
+#include "proc.h"
 
 
 irq_handler			irq_table[NR_IRQ];
@@ -17,5 +18,5 @@ TASK				task_table[TASK_SIZE] = {
 					{(u32)TestD, 0x8000}
 					};
 
-u32					NR_TASKS	= 3;
+
 

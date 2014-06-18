@@ -3,7 +3,7 @@
 #include "proto.h"
 #include "string.h"
 #include "global.h"
-
+#include "proc.h"
 
 void kernel_main()
 {
@@ -57,13 +57,14 @@ void kernel_main()
 
 
 	/* 清屏 */
+	/*
 	disp_pos = 0;
 	for (i = 0; i < (80 * 25); i++)
 	{
 		disp_color_str(" ", 0x07);
 	}
 	disp_pos = 0;
-
+	*/
 
 
 	/* 初始化PIT */
@@ -73,6 +74,8 @@ void kernel_main()
 
 	put_irq_handler(CLOCK_IRQ, clock_handler);
 	enable_irq(CLOCK_IRQ);
+
+	init_keyboard();
 
 	restart();
 
@@ -103,7 +106,7 @@ void TestA()
 	
 	while (1)
 	{		
-		disp_color_str(" A", 0x0c);
+//		disp_color_str(" A", 0x0c);
 //		disp_int(proc_table[0].ticks);
 
 		milli_delay(10);

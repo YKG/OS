@@ -2,7 +2,7 @@
 #include "type.h"
 #include "proto.h"
 #include "global.h"
-
+#include "proc.h"
 
 void Init_IDT_DESC(u8 vec_no, u8 type, void * handler, u8 privilege)
 {

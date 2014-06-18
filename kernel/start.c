@@ -3,6 +3,8 @@
 #include "proto.h"
 #include "string.h"
 #include "global.h"
+#include "proc.h"
+
 
 void cstart()
 {	
