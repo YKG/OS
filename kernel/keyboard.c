@@ -7,7 +7,9 @@
 
 void keyboard_handler(u32 vector_no)
 {	
-	DispString("*");
+//	DispString("*");
+	u8 scan_code = in_byte(0x60);
+	disp_int(scan_code);
 }
 
 
