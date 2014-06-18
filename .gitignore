@@ -1,4 +1,8 @@
 *.bin
+*.BIN
 *.img
+*.IMG
 *.com
+*.COM
+*.swp
 

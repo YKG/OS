@@ -447,7 +447,10 @@ int	7fh
 int	80h
 sti
 
-;jmp	$
+jmp	$
+
+
+
 xchg	bx, bx
 call	SetRealMode8259A
 
@@ -609,17 +612,17 @@ LABEL_Foo:
 mov	ax, SelectorVideo
 mov	gs, ax
 
-mov	edi, (80*20 + 0)*2
+mov	edi, (80*20 + 50)*2
 mov	ah, 0ch
 mov	al, 'F'
 mov	[gs:edi], ax
 
-mov	edi, (80*20 + 1)*2
+mov	edi, (80*20 + 51)*2
 mov	ah, 0ch
 mov	al, 'o'
 mov	[gs:edi], ax
 
-mov	edi, (80*20 + 2)*2
+mov	edi, (80*20 + 52)*2
 mov	ah, 0ch
 mov	al, 'o'
 mov	[gs:edi], ax
@@ -633,17 +636,17 @@ LABEL_Bar:
 mov	ax, SelectorVideo
 mov	gs, ax
 
-mov	edi, (80*21 + 0)*2
+mov	edi, (80*21 + 50)*2
 mov	ah, 0ch
 mov	al, 'B'
 mov	[gs:edi], ax
 
-mov	edi, (80*21 + 1)*2
+mov	edi, (80*21 + 51)*2
 mov	ah, 0ch
 mov	al, 'a'
 mov	[gs:edi], ax
 
-mov	edi, (80*21 + 2)*2
+mov	edi, (80*21 + 52)*2
 mov	ah, 0ch
 mov	al, 'r'
 mov	[gs:edi], ax
