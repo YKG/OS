@@ -1,0 +1,6 @@
+错误：
+load_seg_reg(DS, 0x0020): not data or readable code
+
+原因：
+我是要读取CS段的内容，但该段描述符属性是DA_C + DA_32,这样是没有读属性的。
+于是查了一下源码, 果然与此有关，修改成：DA_CR + DA_32

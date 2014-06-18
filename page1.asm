@@ -1,3 +1,10 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  这个做了一次分页，可正常运行，没有页表切换 ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 %include "pm.inc"
 
 org	0100h
@@ -8,12 +15,18 @@ jmp	LABEL_BEGIN
 PageDirBase	equ	200000h
 PageTblBase	equ	201000h
 
+BaseDemo	equ	401000h
+BaseFoo		equ	401000h
+BaseBar		equ	501000h
+
 
 
 [SECTION .gdt]
 GDT_DESC:	Descriptor	0, 0, 0
 Normal_DESC:	Descriptor	0, 0ffffh, DA_DRW
-Code32_DESC:	Descriptor	0, Code32Len - 1, DA_C + DA_32
+FlatC_DESC:	Descriptor	0, 0ffffh, DA_C | DA_32 | DA_LIMIT_4K
+FlatRW_DESC:	Descriptor	0, 0ffffh, DA_DRW| DA_LIMIT_4K
+Code32_DESC:	Descriptor	0, Code32Len - 1, DA_CR + DA_32 ; 该段需要有读属性(DA_CR)，不能仅仅是DA_C
 Code16_DESC:	Descriptor	0, 0ffffh, DA_C	; 一定要注意段界限，保证为0ffffh
 VIDEO_DESC:	Descriptor	0b8000h, 0ffffh, DA_DRW
 Stack_DESC:	Descriptor	0, TopOfStack, DA_DRW
@@ -21,13 +34,14 @@ Data_DESC:	Descriptor	0, DataLen - 1, DA_DRW
 Page_Dir_DESC:	Descriptor	PageDirBase, 4095, DA_DRW  
 Page_Tbl_DESC:	Descriptor	PageTblBase, 1023, DA_DRW | DA_LIMIT_4K
 ;Page_Tbl_DESC:	Descriptor	PageTblBase, 4096*8 - 1, DA_DRW 
-;Page_Tbl_DESC:	Descriptor	PageTblBase, 1024*8 - 1, DA_DRW 
 
 
 GdtLen	equ	$ - $$
 GdtPtr	dw	GdtLen - 1
 	dd	0
 
+SelectorFlatC	equ	FlatC_DESC - GDT_DESC
+SelectorFlatRW	equ	FlatRW_DESC - GDT_DESC
 SelectorNormal	equ	Normal_DESC - GDT_DESC
 SelectorCode16	equ	Code16_DESC - GDT_DESC
 SelectorCode32	equ	Code32_DESC - GDT_DESC
@@ -245,7 +259,6 @@ int	21h
 
 
 [SECTION .32]
-;ALIGN	32
 [BITS 32]
 LABEL_SEG_CODE32:
 mov	ax, SelectorVideo
@@ -304,12 +317,62 @@ call	DispInt
 add	esp, 4
 
 
-;xchg	bx, bx
+
+
+xchg	bx, bx
+;放置Foo的代码到BaseFoo(0x401000)处
+mov	ax, SelectorFlatRW
+mov	es, ax
+mov	esi, BaseFoo
+mov	ax, SelectorCode32;cs
+mov	ds, ax
+mov	edi, LABEL_Foo - $$
+mov	cx, Foo_Len
+.cpyfoo:
+	mov	byte	al, [ds:edi]
+	mov	byte	[es:esi], al
+	inc	edi
+	inc	esi
+loop	.cpyfoo
+
+
+
+
+
+xchg	bx, bx
 call	SetupPaging
 
+xchg	bx, bx
+call	SelectorFlatC:BaseDemo
 
 jmp	SelectorCode16:0
 jmp	$
+
+
+
+
+LABEL_Foo:
+mov	ax, SelectorVideo
+mov	gs, ax
+
+mov	edi, (80*20 + 0)*2
+mov	ah, 0ch
+mov	al, 'F'
+mov	[gs:edi], ax
+
+mov	edi, (80*20 + 1)*2
+mov	ah, 0ch
+mov	al, 'o'
+mov	[gs:edi], ax
+
+mov	edi, (80*20 + 2)*2
+mov	ah, 0ch
+mov	al, 'o'
+mov	[gs:edi], ax
+
+retf
+Foo_Len		equ	$ - LABEL_Foo
+
 
 
 DispMemSize:
@@ -367,6 +430,9 @@ ret
 SetupPaging:
 
 xchg	bx, bx
+mov	ax, SelectorData
+mov	ds, ax
+mov	es, ax
 
 xor	edx, edx
 mov	dword eax, [dwRAMSize]
@@ -395,47 +461,17 @@ loop	sdir
 
 
 xchg	bx, bx
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 这里面的是正确的，下面的是错误的，页表偏移了02000h
-; 原因是 eax 过早赋值，后来又用到了，原值被覆盖！
-; 
-; 作为一个样本，留此错误备份
-;
-;
-; mov	ax, SelectorTbl
-; mov	es, ax
-; mov	edi, 0
-; pop	eax
-; mov	ebx, 1024
-; mul	ebx
-; mov	ecx, eax
-; xor	eax, eax
-; mov	eax, PG_P | PG_USU | PG_RWW
-; stbl:	
-;	mov	[es:edi], eax
-;	add	edi, 4
-;	add	eax, 4*1024
-; loop	stbl
-;
-;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 mov	ax, SelectorTbl
 mov	es, ax
 mov	edi, 0
-xor	eax, eax
-mov	eax, PG_P | PG_USU | PG_RWW
 pop	eax
 mov	ebx, 1024
 mul	ebx
 mov	ecx, eax
-;xor	eax, eax
+xor	eax, eax
+mov	eax, PG_P | PG_USU | PG_RWW
 stbl:	
-	or	eax, 7	; 如果这里是6，也就是最后1bit不是1，会出现这个错误(#PF)：
-			; (cpuid).[SYS_CLOCK] ??? (physical address not available)
-			; 最后1bit对应PDE(Page Directory Entry)/PTE 的 P位
-			; 为1表示在内存中，0为不在
 	mov	[es:edi], eax
 	add	edi, 4
 	add	eax, 4*1024
@@ -444,26 +480,20 @@ loop	stbl
 
 
 xchg	bx, bx
-pop	edx
 mov	eax, PageDirBase
 mov	cr3, eax
 mov	eax, cr0
 or	eax, 80000000h
 mov	cr0, eax
 
-sub	edx, 01000h
-push	edx
-ret
 jmp	short .nop
 .nop:
-	nop
-	nop
-	nop
 	nop
 
 ret
 
 %include "lib.inc"
+
 
 jmp	$
 
