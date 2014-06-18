@@ -49,7 +49,7 @@ void clock_handler(u32 vector_no)
 		return;
 	}
 
-	delay();
+/*	delay(); */
 
 	if (p_proc_ready < &proc_table[n_tasks - 1])
 	{

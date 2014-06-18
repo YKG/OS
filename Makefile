@@ -14,21 +14,21 @@ OBJS		= kernel/kernel.o kernel/start.o kernel/i8259.o kernel/protect.o lib/strin
 LD_KERNEL_ARGS	= -s -Ttext 0x030400
 
 
-.PHONY: everything clean realclean image building
+.PHONY: all everything clean realclean image building
 ####################################################################################
 # Makefile 的格式要求很严格，和动作在一行的是依赖(必须在一行)，
 # 下面的都是命令，命令不能放在与动作同行，
 # 不能错行，命令前面必须有TAB
 ####################################################################################
 
-everything: $(TARGETS)
+everything: $(TARGETS)	
 
-all: realclean everything clean
-	
+all: realclean everything 
+
 clean:	
 	rm $(OBJS)
 
-realclean: clean	
+realclean: clean
 	rm $(TARGETS)
 
 image: all building

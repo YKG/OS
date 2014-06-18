@@ -6,6 +6,11 @@ SA_RPL1			equ	1
 TOP_REGS_OF_PROC	equ	18*4	; 18个寄存器(PROCESS)
 SELECTOR_OF_PROC	equ	18*4	; 选择子在PROCESS中的偏移
 RETADDR_AT_PROC_REGS	equ	12*4	; retaddr在PROCESS.REG中的偏移，即以前的error_code位置，好像中断没有error_code
+EOI			equ	020h
+INT_M_CTL		equ	020h	; 主8259A Controller
+INT_M_CTLMASK		equ	021h	; 主8259A Mask
+
+
 
 extern	kernel_main
 extern	cstart
@@ -215,29 +220,9 @@ exception:
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 外部中断
-
-hwint00:
-xchg	bx, bx
-	
-	call	save		; 下一条语句的 地址(EIP) 入栈
-	
-	inc	byte [gs:0]
-	mov	al, 0x20	; 发送EOI
-	out	0x20, al
-	
-	sti
-	push	0		; int 0
-	call	clock_handler
-	add	esp, 4
-	cli
-
-	ret
 
 
 save:
-;	sub	esp, 4		; 越过 error_code || 其实是越过 retaddr
 	pushad
 	push	ds
 	push	es
@@ -260,6 +245,37 @@ save:
 	push	reenter
 	jmp	dword [ebx + RETADDR_AT_PROC_REGS]
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 外部中断
+
+hwint00:
+xchg	bx, bx
+	
+	call	save		; 下一条语句的 地址(EIP) 入栈
+	
+
+	in	al, INT_M_CTLMASK
+	or	al, 1		; 屏蔽时钟中断
+	out	INT_M_CTLMASK, al
+
+
+	inc	byte [gs:0]
+	mov	al, EOI		; 发送EOI
+	out	INT_M_CTL, al
+	
+	sti
+	push	0		; int 0
+	call	clock_handler
+	add	esp, 4
+	cli
+
+
+	in	al, INT_M_CTLMASK
+	and	al, 0FEh	; 开启时钟中断
+	out	INT_M_CTLMASK, al
+
+	ret
 
 
 hwint01:
