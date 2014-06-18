@@ -59,6 +59,10 @@
 	#define	PORT_S_OCW1		0x0A1
 
 
+	#define	CLOCK_IRQ		0
 
+
+
+	#define	NR_IRQ			16
 
 #endif

@@ -46,9 +46,12 @@ void hwint12();
 void hwint13();
 void hwint14();
 void hwint15();
-void hwinterupt();
+//void hwinterupt();
+void enable_irq(u32 irq);
+void disable_irq(u32 irq);
 void spurious_irq(u32 vector_no);
 void clock_handler(u32 vector_no);
+void put_irq_handler(u32 irq, irq_handler handler);
 
 
 void restart();

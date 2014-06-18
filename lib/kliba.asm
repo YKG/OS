@@ -1,3 +1,11 @@
+INT_M_CTL		equ	020h	; 主8259A Controller
+INT_M_CTLMASK		equ	021h	; 主8259A Mask
+INT_S_CTL		equ	0A0h	; 主8259A Controller
+INT_S_CTLMASK		equ	0A1h	; 主8259A Mask
+
+
+
+
 extern	disp_pos
 
 [section .text]
@@ -6,6 +14,81 @@ global	disp_color_str
 global	DispInt
 global	out_byte
 global	in_byte
+global	disable_irq
+global	enable_irq
+
+
+
+
+
+
+
+
+;==== disable_irq ============================
+; disable_irq(u32 irq)
+;=========================================
+disable_irq:
+	mov	ecx, [esp + 4]
+	pushf
+	mov	ah, 1
+	shl	ah, cl
+	cmp	cl, 8
+	jae	disable_8
+disable_0:
+	in	al, INT_M_CTLMASK
+	test	al, ah
+	jz	dis_already		; 不知道为啥 al == ah 就能判断已经屏蔽了？其他的屏蔽会影响这个结果啊
+	or	al, ah
+	out	INT_M_CTLMASK, al
+	mov	eax, 1
+	popf
+	ret
+disable_8:
+	in	al, INT_S_CTLMASK
+	test	al, ah
+	jz	dis_already		; 不知道为啥 al == ah 就能判断已经屏蔽了？其他的屏蔽会影响这个结果啊
+	or	al, ah
+	out	INT_S_CTLMASK, al
+	mov	eax, 1
+	popf
+	ret
+dis_already:
+	xor	eax, eax
+	popf
+	ret
+;==== disable_irq End ========================
+
+
+
+
+;==== enable_irq =============================
+; enable_irq(u32 irq)
+;=========================================
+enable_irq:
+xchg	bx, bx
+	mov	ecx, [esp + 4]
+	pushf
+	cli				; 忘记了！
+	mov	ah, ~1
+	rol	ah, cl			; 这个应该是循环移位的意思，最高位会被移动到最低位
+	cmp	cl, 8
+	jae	enable_8
+enable_0:
+	in	al, INT_M_CTLMASK
+	and	al, ah
+	out	INT_M_CTLMASK, al	
+	popf
+	ret
+enable_8:
+	in	al, INT_S_CTLMASK
+	and	al, ah
+	out	INT_S_CTLMASK, al	
+	popf
+	ret
+;==== enable_irq End =========================
+
+
+
 
 
 

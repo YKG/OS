@@ -4,7 +4,7 @@
 #include "string.h"
 #include "global.h"
 
-
+#include "global.c"
 
 
 void cstart()

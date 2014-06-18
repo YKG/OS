@@ -27,7 +27,7 @@ extern	k_reenter
 extern	p_proc_ready
 extern	proc_table
 extern	clock_handler
-
+extern	irq_table
 
 [section .bss]
 resb	2*1024
@@ -222,6 +222,37 @@ exception:
 
 
 
+%macro hwint_master	1
+	
+	call	save		; 下一条语句的 地址(EIP) 入栈
+	
+	in	al, INT_M_CTLMASK
+	or	al, 1 << %1 	; 屏蔽时钟中断
+	out	INT_M_CTLMASK, al
+
+
+;	inc	byte [gs:0]
+	mov	al, EOI		; 发送EOI
+	out	INT_M_CTL, al
+	
+	sti
+	push	%1		; int 0
+	call	[irq_table + 4 * %1]
+	add	esp, 4
+	cli
+
+
+	in	al, INT_M_CTLMASK
+	and	al, ~(1 << %1)	; 开启时钟中断
+	out	INT_M_CTLMASK, al
+
+	ret
+
+%endmacro
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 save:
 	pushad
 	push	ds
@@ -250,6 +281,8 @@ save:
 ; 外部中断
 
 hwint00:
+	hwint_master	0
+
 xchg	bx, bx
 	
 	call	save		; 下一条语句的 地址(EIP) 入栈

@@ -6,17 +6,29 @@
 
 void Init8259A()
 {
-		out_byte(PORT_M_ICW1, 0x011);
-		out_byte(PORT_S_ICW1, 0x011);
-		out_byte(PORT_M_ICW2, 0x020);
-		out_byte(PORT_S_ICW2, 0x028);
-		out_byte(PORT_M_ICW3, 0x004);
-		out_byte(PORT_S_ICW3, 0x002);
-		out_byte(PORT_M_ICW4, 0x001);
-		out_byte(PORT_S_ICW4, 0x001);
-	
-		out_byte(PORT_M_OCW1, 0xFE);	/* 11111110b  开时钟中断 */
-		out_byte(PORT_S_OCW1, 0xFF);	/* 11111111b  全部屏蔽   */
+	u32 i;
+
+	out_byte(PORT_M_ICW1, 0x011);
+	out_byte(PORT_S_ICW1, 0x011);
+	out_byte(PORT_M_ICW2, 0x020);
+	out_byte(PORT_S_ICW2, 0x028);
+	out_byte(PORT_M_ICW3, 0x004);
+	out_byte(PORT_S_ICW3, 0x002);
+	out_byte(PORT_M_ICW4, 0x001);
+	out_byte(PORT_S_ICW4, 0x001);
+
+	out_byte(PORT_M_OCW1, 0xFF);	/* 11111111b  全部屏蔽 */
+	out_byte(PORT_S_OCW1, 0xFF);	/* 11111111b  全部屏蔽   */
+
+
+	for (i = 0; i < NR_IRQ; i++)
+	{
+		irq_table[i] = spurious_irq;
+	}	
+
+
+	put_irq_handler(CLOCK_IRQ, clock_handler);
+	enable_irq(CLOCK_IRQ);
 
 }
 
@@ -34,7 +46,8 @@ void spurious_irq(u32 vector_no)
 
 	keyboardint_count++;			/* 为啥不更新呢。。! 因为之前没发送 EOI, 外加硬件中断使用 ret 返回了，应该是 iretd */
 
-	out_byte(PORT_M_ICW1, 0x20);	/* 发送 EOI, port: 0x20, value: 0x20 */
+//	out_byte(PORT_M_ICW1, 0x20);	/* 发送 EOI, port: 0x20, value: 0x20 */
+//	delay();
 }
 
 
@@ -60,4 +73,43 @@ void clock_handler(u32 vector_no)
 		p_proc_ready = proc_table;
 	}
 }
+
+
+
+
+void put_irq_handler(u32 irq, void (* handler)(u32 irq))
+{
+	disable_irq(irq);
+	irq_table[irq] = handler;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//void Init8259A()
+//{
+//		out_byte(PORT_M_ICW1, 0x011);
+//		out_byte(PORT_S_ICW1, 0x011);
+//		out_byte(PORT_M_ICW2, 0x020);
+//		out_byte(PORT_S_ICW2, 0x028);
+//		out_byte(PORT_M_ICW3, 0x004);
+//		out_byte(PORT_S_ICW3, 0x002);
+//		out_byte(PORT_M_ICW4, 0x001);
+//		out_byte(PORT_S_ICW4, 0x001);
+//	
+//		out_byte(PORT_M_OCW1, 0xFE);	/* 11111110b  开时钟中断 */
+//		out_byte(PORT_S_OCW1, 0xFF);	/* 11111111b  全部屏蔽   */
+//
+//}
 
