@@ -36,7 +36,7 @@ LABEL_START:
 	mov	ss, ax
 	mov	sp, 0100h
 
-
+xchg	bx, bx
 	mov	ah, 000h
 	mov	dl, 0		; A盘
 	int	13h		; 复位软驱
@@ -62,6 +62,7 @@ LABEL_START:
 LABEL_SEARCH_IN_ROOT_DIR_LOOP:
 	
 	mov	word ax, [wSectorNoForRead]
+	mov	byte [bSectorsToRead], 1 ; 读1个扇区
 	call	ReadSector	; 读第 19 扇区
 
 	
@@ -121,6 +122,33 @@ LABEL_NOT_FOUND:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 LABEL_FOUND:
+xchg	bx, bx
+	
+	mov	word ax, [es:di - 11 + 32 - 4 - 2]
+
+	mov	dx, DestSeg
+	mov	es, dx
+	mov	bx, DestOffset	; 设置es:bx 为 0x9000:0
+
+LABEL_GO_ON_LOADING:	
+	push	ax
+	add	ax, 19 + 14 - 2
+	mov	byte [bSectorsToRead], 1 ; 读1个扇区
+	call	ReadSector
+
+	
+	pop	ax
+	call	GetFATEntry
+xchg	bx, bx
+	cmp	ax, 0fffh
+	je	LABEL_LOADER_LOADED
+	add	bx, 512		; 继续加载到下一扇区
+	jmp	LABEL_GO_ON_LOADING
+
+	jmp	$
+
+
+
 	mov	ax, cs
 	mov	ds, ax
 	mov	si, LoaderFound
@@ -129,24 +157,21 @@ LABEL_FOUND:
 	jmp	$
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	mov	ax, 0b800h
-;	mov	gs, ax
-;	mov	ah, 0ch
-;	mov	al, 'Y'		; 找到了
-;	mov	[gs:(80*3 + 3)*2], ax
-;	jmp	$
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+LABEL_LOADER_LOADED:
+	jmp	DestSeg:DestOffset
+	
 
 
 
-;	jmp	$
-;
-;	
-;	mov	ax, 1		; 读 1 扇区
-;	call	ReadSector
-;
-;	jmp	$
+
+
+
+
+
+
+
 
 
 
@@ -154,15 +179,17 @@ LABEL_FOUND:
 ; 读扇区
 ;
 ; 参数:
-;	ax	扇区号
-;	es:bx	存放位置
+;	ax		扇区号
+;	bSectorsToRead	读取扇区数
+;	es:bx		存放位置
 ;=======================
 ReadSector:
-	push	ax
+	push	ax	
 	push	cx
 	push	dx
+	
 
-	mov	cl, [BPB_SecPerTrk]
+	mov	cl, [ds:BPB_SecPerTrk]
 	div	cl
 	
 	mov	cl, ah		
@@ -174,8 +201,8 @@ ReadSector:
 	mov	dl, 0
 
 .GoOnReading:
-	mov	ah, 2		; 读
-	mov	al, 1		; 准备读的取扇区个数
+	mov	ah, 2			  ; 读
+	mov	byte al, [ds:bSectorsToRead] ; 准备读的取扇区个数
 	int	13h		
 	jc	.GoOnReading
 
@@ -217,6 +244,69 @@ DispStr:
 
 
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;GetFATEntry	取当前ax对应的FAT项，结果保存在ax中
+;	参数：ax
+;	返回：ax
+;---------------------------------------------------------
+GetFATEntry:
+	push	bx
+	push	cx
+	push	dx
+	push	es
+	push	di
+
+
+
+
+	xor	dx, dx
+	mov	bx, 3
+	mul	bx
+	mov	bx, 512*2
+	div	bx	
+	mov	cx, ax		; 第 cx 扇区即待读取的第一个扇区(相对于FAT1)，ax是商
+	mov	ax, dx
+	shr	ax, 1		; ax是起始扇区起始字节，dx是余数，dx >> 1 即除以 2
+	and	dx, 1
+	
+	
+	mov	bx, (DestSeg - 0x100)
+	mov	es, bx
+	mov	bx, DestOffset	
+
+	push	ax
+	mov	ax, cx
+	inc	ax		; FAT1前面还有一个扇区
+	mov	byte [bSectorsToRead], 2 ; 读2个扇区
+	call	ReadSector
+
+	pop	ax
+	mov	di, ax
+	mov	word ax, [es:di]
+
+	test	dx, dx		; 判断dx是不是偶数
+	jz	FAT_ENTRY_EVEN
+	shr	ax, 4		; 奇数情况
+	jmp	GetFATEntryReturn
+FAT_ENTRY_EVEN:
+	and	ax, 00fffh	; 偶数情况
+		
+GetFATEntryReturn:
+	pop	di
+	pop	es
+	pop	dx
+	pop	cx
+	pop	bx
+	
+	ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
 DestSeg			equ	09000h
 DestOffset		equ	0
 RootFirstSectorNo	equ	19	; 根目录第一扇区号
@@ -225,6 +315,7 @@ RootFirstSectorNo	equ	19	; 根目录第一扇区号
 LoaderName:		db	'LOADER  BIN'
 LoaderFound:		db	'LOADER FOUND!', 0
 LoaderNoLoader:		db	'NO LOADER', 0
+bSectorsToRead:		db	0
 bRootSectorNum:		db	14
 bIndexForRootSectorLoop:db	0
 wSectorNoForRead:	dw	RootFirstSectorNo
