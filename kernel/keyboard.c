@@ -9,7 +9,7 @@
 
 static KB_INPUT	kb_in;
 static int	column;
-static int	make_code;
+static int	make;
 static int	code_with_E0;
 static int	shift_l;
 static int	shift_r;
@@ -17,6 +17,29 @@ static int	alt_l;
 static int	alt_r;	
 static int	ctrl_l;	
 static int	ctrl_r;	
+static u8	get_byte_from_kbuf()
+{
+	u8 scan_code;
+	disable_int();
+
+	while (kb_in.count <= 0)
+	{
+	}
+
+
+	scan_code = *(kb_in.head);
+	kb_in.head++;
+	if (kb_in.head == kb_in.buf + KB_IN_BYTES)
+	{
+		kb_in.tail = kb_in.buf;
+	}
+	kb_in.count--;
+
+	enable_int();
+	
+	return scan_code;
+}
+
 
 void keyboard_handler(u32 irq)
 {	
@@ -36,128 +59,122 @@ void keyboard_handler(u32 irq)
 
 
 
+
+
 void keyboard_read()
 {	
 	u8 scan_code;
+	u32	key;
 	char output[2] = {0, 0};
 
 	if (kb_in.count > 0)
 	{
-		disable_int();
+		scan_code = get_byte_from_kbuf();
 
-		scan_code = *(kb_in.head);
-		kb_in.head++;
-		if (kb_in.head == kb_in.buf + KB_IN_BYTES)
+		if (scan_code == 0xE1)
 		{
-			kb_in.tail = kb_in.buf;
+			int i;
+			u8 pausebrk_scode[] = { 0xE1, 0X1D, 0X45,
+									0xE1, 0x9D, 0xC5};
+			int is_pausebreak = 1;
+			for (i = 1; i < 6; i++)
+			{
+				if (get_byte_from_kbuf() != pausebrk_scode[i])
+				{
+					is_pausebreak = 0;
+					break;
+				}
+			}
+			if (is_pausebreak)
+			{
+				key = PAUSEBREAK;
+			}
 		}
-		kb_in.count--;
-
-		enable_int();
-
-
-//		output[0] = keymap[scan_code * 3];
-//		disp_int(scan_code);
-//		disp_color_str(output, 0x07);
-
-		if (scan_code == 0xE0)
+		else if (scan_code == 0xE0)
 		{
-			code_with_E0 = 1;
+			scan_code = get_byte_from_kbuf();
+
+			/* PrintScreen 被按下 */
+			if (scan_code == 0x2A) {
+				if (get_byte_from_kbuf() == 0xE0) {
+					if (get_byte_from_kbuf() == 0x37) {
+						key = PRINTSCREEN;
+						make = 1;
+					}
+				}
+			}
+			/* PrintScreen 被释放 */
+			if (scan_code == 0xB7) {
+				if (get_byte_from_kbuf() == 0xE0) {
+					if (get_byte_from_kbuf() == 0xAA) {
+						key = PRINTSCREEN;
+						make = 0;
+					}
+				}
+			}
+			/* 不是PrintScreen, 此时scan_code为0xE0紧跟的那个值. */
+			if (key == 0) {
+				code_with_E0 = 1;
+			}
 		}
-		else if (scan_code == 0xE1)
-		{
-		}
-		else
-		{	
+
+
+		if(key != PAUSEBREAK && key != PRINTSCREEN)
+		{				
 			column = 0;
-			make_code = 0;
-			if (scan_code == 0x2A)		/* SHIFT_L Make Code */
-			{
-				shift_l = 1;
-			}
-			else if(scan_code == 0xAA)	/* SHIFT_L Break Code */
-			{
-				shift_l = 0;
-			}			
-			else if (scan_code == 0x36)		/* SHIFT_R Make Code */
-			{
-				shift_r = 1;
-			}
-			else if(scan_code == 0xb6)	/* SHIFT_R Break Code */
-			{
-				shift_r = 0;
-			}
-			else if (scan_code == 0x38)		/* ALT_L Make Code */
-			{				
-				if (code_with_E0)
-				{
-					alt_r = 1;
-					code_with_E0 = 0;
-				}
-				else
-				{
-					alt_l = 1;
-				}
-			}
-			else if(scan_code == 0xb8)	/* ALT_L Break Code */
-			{
-				if (code_with_E0)
-				{
-					alt_r = 0;
-					code_with_E0 = 0;
-				}
-				else
-				{
-					alt_l = 0;
-				}
-			}
-			else if (scan_code == 0x2C)		/* CTRL_L Make Code */
-			{
-				ctrl_l = 1;
-			}
-			else if(scan_code == 0xAC)	/* CTRL_L Break Code */
-			{
-				ctrl_l = 0;
-			}
-			else if (scan_code == 0x1D)		/* CTRL_R Make Code */
-			{
-				if (code_with_E0)
-				{
-					code_with_E0 = 0;
-				}
-				ctrl_r = 1;
-			}
-			else if(scan_code == 0x9D)	/* CTRL_R Break Code */
-			{
-				if (code_with_E0)
-				{
-					code_with_E0 = 0;
-				}
-				ctrl_r = 0;
-			}
-			else
-			{
-				make_code = 1;
-			}
-			/*
-			alt_l	0x38			0xb8
-			alt_r	0xe0 0x38		0xe0 0xb8
-			ctrl_l	0x2c			0xac
-			ctrl_r	0xe0 0x1d		0xe0 0x9d
-			*/
-
-
 			if (shift_l || shift_r)
 			{
 				column = 1;
-			}
-
-
-			if (make_code && !(scan_code & 0x80))	/* 如果不是Break Code */
+			}			
+			if (code_with_E0)
 			{
-				output[0] = keymap[scan_code * 3 + column];
+				column = 2;
+				code_with_E0 = 0;
+			}			
+			key = keymap[(scan_code & 0x7F) * 3 + column];
+
+//			disp_int(key);
+
+			make = (!(scan_code & 0x80));		/* Make Code 标志 */
+			switch (key)
+			{
+			case SHIFT_L:
+				shift_l = make;
+				key = 0;
+				break;
+			case SHIFT_R:
+				shift_r = make;
+				key = 0;
+				break;
+			case ALT_L:
+				alt_l = make;
+				key = 0;
+				break;
+			case ALT_R:
+				alt_r = make;
+				key = 0;
+				break;
+			case CTRL_L:
+				ctrl_l = make;
+				key = 0;
+				break;
+			case CTRL_R:
+				ctrl_r = make;
+				key = 0;
+				break;
+			default:
+//				disp_color_str("default", 0x07);
+				if (!make)
+				{
+					key = 0;
+				}		
+				break;
+			}
+			
+			if (key)
+			{
+				output[0] = key;
 				disp_color_str(output, 0x0c);
-//				disp_int(scan_code);
 			}
 		}
 	}
