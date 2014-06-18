@@ -19,7 +19,7 @@ void kernel_main()
 					{(u32)TestA, 0x8000},
 					{(u32)TestB, 0x8000},
 					{(u32)TestC, 0x8000},
-					{(u32)TestD, 0x8000},
+//					{(u32)TestD, 0x8000},
 					{0, 0}
 				};
 
@@ -64,7 +64,7 @@ void kernel_main()
 	}
 
 
-	k_reenter = -1;
+	k_reenter = -1;									
 
 	p_proc_ready = proc_table;
 
@@ -86,8 +86,9 @@ void kernel_main()
 void delay() 
 {
 	int j, k;
+	
 
-	for (j = 0; j < 15; j++)
+	for (j = 0; j < 8; j++)
 	{
 		for (k = 0; k < 10000; k++)
 		{

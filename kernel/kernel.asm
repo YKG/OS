@@ -225,14 +225,14 @@ xchg	bx, bx
 	push	es
 	push	fs
 	push	gs
-
-	
-	mov	esp, TopOfStack
-	mov	ax, SelectorFlatRW
+;	mov	ax, SelectorFlatRW
+	mov	ax, ss
 	mov	ds, ax
 	mov	es, ax
 	mov	fs, ax
 
+	
+	
 
 	inc	byte [gs:0]
 	mov	al, 0x20	; 发送EOI
@@ -240,56 +240,33 @@ xchg	bx, bx
 
 	inc	dword [ds:k_reenter]
 	cmp	dword [ds:k_reenter], 0
-	jne	.reenter
+	jne	.1
+;	jne	.reenter
 
+	mov	esp, TopOfStack
+	push	.restart_v2
+	jmp	.2
+.1:	
+	push	.reenter_v2
+.2:
 	sti
-	
-;	mov	eax, proc_table
-;	cmp	eax, [p_proc_ready]
-;	je	.a
-;	mov	dword [p_proc_ready], proc_table
-;	jmp	.e
-;.a:
-;	mov	dword [p_proc_ready], proc_table + 05ch
-;	jmp	.e
-;	
-;.e:
-;	push	clock_int_msg
-;	call	DispString
-;	add	esp, 4
-;
-;;	call	delay
-
 	push	0		; int 0
 	call	clock_handler
 	add	esp, 4
+	cli
 
-;================================================================================ 
-; 重大修订, 更新至此
-;- - - - - - - - - - - - - - - - - - -
+	ret
 
+.restart_v2:
 	mov	esp, [p_proc_ready]
 	lea	eax, [esp + TOP_REGS_OF_PROC]
 	mov	dword [tss + 4], eax	; esp0
-;
-;================================================================================
 
+	mov	ax, [esp + SELECTOR_OF_PROC]
+	lldt	ax
 
-.reenter:	
+.reenter_v2:
 	dec	dword [ds:k_reenter]
-;================================================================================ 
-; 重大修订
-;- - - - - - - - - - - - - - - - - - -
-;
-; 更改 TSS 不应该在这里做！ 刚刚仔细推演过各种情况了，放在这里是不合适的，
-; 虽然运行是没有问题的，当然理论也是没有问题的，但这样做不好，逻辑上就不是很好。
-; 更新到 .reenter 上面了。
-;	mov	esp, [p_proc_ready]
-;	lea	eax, [esp + TOP_REGS_OF_PROC]
-;	mov	dword [tss + 4], eax	; esp0
-;
-;================================================================================
-
 
 	pop	gs
 	pop	fs
