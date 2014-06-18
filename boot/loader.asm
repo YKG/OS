@@ -1,8 +1,7 @@
-
 %include "pm.inc"
 
 
-org  0100h			; Boot 状态, Bios 将把 Boot Sector 加载到 0:7C00 处并开始执行
+org  0100h			; 0x9000:0x100
 
 		
 	
@@ -46,83 +45,21 @@ org  0100h			; Boot 状态, Bios 将把 Boot Sector 加载到 0:7C00 处并开�
 [SECTION .gdt]
 LABEL_GDT:
 	GDT_DESC:	Descriptor	0, 0, 0
-	;Normal_DESC:	Descriptor	0, 0ffffh, DA_DRW
 	FlatC_DESC:	Descriptor	0, 0ffffh, DA_C | DA_32 | DA_LIMIT_4K
 	FlatRW_DESC:	Descriptor	0, 0ffffh, DA_DRW| DA_32 |DA_LIMIT_4K	; 把我害死了 DA_32 ！
 	VIDEO_DESC:	Descriptor	0b8000h, 0ffffh, DA_DRW
-	Code32_DESC:	Descriptor	0, Code32Len - 1, DA_CR + DA_32 ;DA_CR, 不能是DA_C
-	Code16_DESC:	Descriptor	0, 0ffffh, DA_C	; 一定要注意段界限，保证为0ffffh	
-	Stack_DESC:	Descriptor	0, TopOfStack, DA_DRW
-	Data_DESC:	Descriptor	0, DataLen - 1, DA_DRW
-	Page_Dir_DESC:	Descriptor	PageDirBase, 4095, DA_DRW  
-	Page_Tbl_DESC:	Descriptor	PageTblBase, 1023, DA_DRW | DA_LIMIT_4K
-	;Page_Tbl_DESC:	Descriptor	PageTblBase, 4096*8 - 1, DA_DRW 
-	Page_Dir_DESC2:	Descriptor	PageDirBase2, 4095, DA_DRW  
-	Page_Tbl_DESC2:	Descriptor	PageTblBase2, 4096*8 - 1, DA_DRW 
+
 
 
 	GdtLen	equ	$ - $$
 	GdtPtr	dw	GdtLen - 1
-		dd	0
+		dd	090000h + LABEL_GDT
 
 	SelectorFlatC	equ	FlatC_DESC - GDT_DESC
 	SelectorFlatRW	equ	FlatRW_DESC - GDT_DESC
-	;SelectorNormal	equ	Normal_DESC - GDT_DESC
-	SelectorCode16	equ	Code16_DESC - GDT_DESC
-	SelectorCode32	equ	Code32_DESC - GDT_DESC
 	SelectorVideo	equ	VIDEO_DESC - GDT_DESC
-	SelectorData	equ	Data_DESC - GDT_DESC
-	SelectorStack	equ	Stack_DESC - GDT_DESC
-	SelectorDir	equ	Page_Dir_DESC - GDT_DESC
-	SelectorTbl	equ	Page_Tbl_DESC - GDT_DESC
-	SelectorDir2	equ	Page_Dir_DESC2 - GDT_DESC
-	SelectorTbl2	equ	Page_Tbl_DESC2 - GDT_DESC
-
-
-
-	PageDirBase	equ	200000h
-	PageTblBase	equ	201000h
-	PageDirBase2	equ	210000h
-	PageTblBase2	equ	211000h
-
-	BaseDemo	equ	401000h
-	BaseFoo		equ	401000h
-	BaseBar		equ	501000h
-;=============================================================================================
-
-
-
-
-
-
-
 
 ;=============================================================================================
-; IDT
-;=============================================================================================
-[SECTION .idt]
-LABEL_IDT:
-
-	%rep	32	
-		Gate	SelectorCode32,	SpuriousHandler, 0, DA_386IGate	
-	%endrep
-	.20h:	Gate	SelectorCode32, ClockHandler,	0, DA_386IGate
-	%rep	95	
-		Gate	SelectorCode32,	SpuriousHandler, 0, DA_386IGate	
-	%endrep
-	.80h:	Gate	SelectorCode32,	UserIntHandler, 0, DA_386IGate	
-
-	IdtLen		equ	$ - $$
-	IdtPtr		dw	IdtLen - 1
-			dd	0
-
-;=============================================================================================
-
-
-
-
-
-
 
 
 
@@ -141,7 +78,7 @@ LABEL_START:
 	mov	ax, cs
 	mov	ds, ax
 	mov	ss, ax
-	mov	sp, 0100h
+	mov	sp, TopOfStack
 
 
 ;-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -208,20 +145,6 @@ LABEL_FOUND:
 	call	DispString
 	mov	si, di		; 保存下一个字符位置到si 
 	pop	di
-
-
-
-
-
-
-
-;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-;	mov	dx, KernelSeg
-;	mov	es, dx
-;	mov	bx, KernelOffset	; 设置es:bx 为 0x9000:0100
-;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-
 
 
 
@@ -320,62 +243,25 @@ memChkOK:
 ;-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ; 设置GDT, IDT，准备跳入保护模式
 ;-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	;保存屏蔽中断寄存器 IMREG
-;	sidt	[_SavedIdtr]
-;	in	al, 21h
-;	mov	byte	[_SavedIMREG], al
 
-
-	xor	eax, eax
-	mov	ax, cs
-	shl	eax, 4
-	add	eax, LABEL_STACK 
-	mov	word [Stack_DESC + 2], ax
-	shr	eax, 16
-	mov	byte [Stack_DESC + 4], al
-	mov	byte [Stack_DESC + 7], ah
-
-
-	xor	eax, eax
-	mov	ax, cs
-	shl	eax, 4
-	add	eax, LABEL_DATA 
-	mov	word [Data_DESC + 2], ax
-	shr	eax, 16
-	mov	byte [Data_DESC + 4], al
-	mov	byte [Data_DESC + 7], ah
-
-
-
-	xor	eax, eax
-	mov	ax, cs
-	shl	eax, 4
-	add	eax, LABEL_SEG_CODE32
-	mov	word [Code32_DESC + 2], ax
-	shr	eax, 16
-	mov	byte [Code32_DESC + 4], al
-	mov	byte [Code32_DESC + 7], ah
-
-
-
-	; 加载GDT
-	xor	eax, eax
-	mov	ax, cs
-	shl	eax, 4
-	add	eax, LABEL_GDT
-	mov	dword	[GdtPtr + 2], eax
-
+;	; 加载GDT
+;	xor	eax, eax
+;	mov	ax, cs
+;	shl	eax, 4
+;	add	eax, LABEL_GDT
+;	mov	dword	[GdtPtr + 2], eax
+xchg	bx, bx
 	lgdt	[GdtPtr]
 
-	; 加载IDT
-	xor	eax, eax
-	mov	ax, cs
-	shl	eax, 4
-	add	eax, LABEL_IDT
-	mov	dword	[IdtPtr + 2], eax
+;	; 加载IDT
+;	xor	eax, eax
+;	mov	ax, cs
+;	shl	eax, 4
+;	add	eax, LABEL_IDT
+;	mov	dword	[IdtPtr + 2], eax
 
 	cli
-	lidt	[IdtPtr]
+;	lidt	[IdtPtr]
 
 	; 打开A20
 	in	al, 92h
@@ -388,7 +274,9 @@ memChkOK:
 	mov	cr0, eax
 
 	; 进入保护模式
-	jmp	dword	SelectorCode32:0	
+;	jmp	dword	SelectorCode32:0
+xchg	bx, bx
+	jmp	dword	SelectorFlatC : LABEL_SEG_CODE32 + 090000h
 
 
 
@@ -590,6 +478,9 @@ cls:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 准备跳入PM前用到一些变量
 ;==============================================
+
+	PageDirBase		equ	100000h
+	PageTblBase		equ	101000h
 	KernelSeg		equ	08000h
 	KernelOffset		equ	0000h	
 	KernelPhyBaseAddress	equ	KernelSeg * 010h + KernelOffset
@@ -625,14 +516,16 @@ cls:
 [SECTION .32]
 [BITS 32]
 LABEL_SEG_CODE32:
-	mov	ax, SelectorVideo
-	mov	gs, ax
-	mov	ax, SelectorData
+	mov	ax, SelectorFlatRW
 	mov	ds, ax
 	mov	es, ax
-	mov	ax, SelectorStack
+	mov	fs, ax
 	mov	ss, ax
-	mov	esp, TopOfStack
+	mov	esp, TopOfStack + 090000h
+	mov	ax, SelectorVideo
+	mov	gs, ax
+
+	
 
 	
 	; 打印一些字符串和内存信息
@@ -666,50 +559,50 @@ LABEL_SEG_CODE32:
 	push	szRAMSize
 	call	DispStr
 	add	esp, 4
-	push	dword	[dwRAMSize]
+	push	dword	[_dwRAMSize+ 090000h]
 	call	DispInt
 	add	esp, 4
 
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;放置Foo的代码到BaseFoo(0x401000)处
-	mov	ax, SelectorFlatRW
-	mov	es, ax
-	mov	esi, BaseFoo
-	mov	ax, SelectorCode32;cs
-	mov	ds, ax
-	mov	edi, LABEL_Foo - $$
-	mov	cx, Foo_Len
-	.cpyfoo:
-		mov	byte	al, [ds:edi]
-		mov	byte	[es:esi], al
-		inc	edi
-		inc	esi
-	loop	.cpyfoo
-
-	;-------------------------------------
-	;放置Bar的代码到BaseBar(0x501000)处
-	mov	ax, SelectorFlatRW
-	mov	es, ax
-	mov	esi, BaseBar
-	mov	ax, cs
-	mov	ds, ax
-	mov	edi, LABEL_Bar - $$
-	mov	cx, Bar_Len
-	.cpybar:
-		mov	byte	al, [ds:edi]
-		mov	byte	[es:esi], al
-		inc	edi
-		inc	esi
-	loop	.cpybar
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;
+;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	;放置Foo的代码到BaseFoo(0x401000)处
+;	mov	ax, SelectorFlatRW
+;	mov	es, ax
+;	mov	esi, BaseFoo
+;	mov	ax, SelectorCode32;cs
+;	mov	ds, ax
+;	mov	edi, LABEL_Foo - $$
+;	mov	cx, Foo_Len
+;	.cpyfoo:
+;		mov	byte	al, [ds:edi]
+;		mov	byte	[es:esi], al
+;		inc	edi
+;		inc	esi
+;	loop	.cpyfoo
+;
+;	;-------------------------------------
+;	;放置Bar的代码到BaseBar(0x501000)处
+;	mov	ax, SelectorFlatRW
+;	mov	es, ax
+;	mov	esi, BaseBar
+;	mov	ax, cs
+;	mov	ds, ax
+;	mov	edi, LABEL_Bar - $$
+;	mov	cx, Bar_Len
+;	.cpybar:
+;		mov	byte	al, [ds:edi]
+;		mov	byte	[es:esi], al
+;		inc	edi
+;		inc	esi
+;	loop	.cpybar
+;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
 
 	; 页表切换实验
 	call	SetupPaging
-	call	SelectorFlatC:BaseDemo
-	call	PSwitch
-	call	SelectorFlatC:BaseDemo
+;	call	SelectorFlatC:BaseDemo
+;	call	PSwitch
+;	call	SelectorFlatC:BaseDemo
 
 
 	; 中断实验
@@ -720,12 +613,12 @@ LABEL_SEG_CODE32:
 
 
 
-	mov	ax, SelectorFlatRW
-	mov	ds, ax
-	mov	es, ax
-	mov	ss, ax
-	mov	fs, ax
-
+;	mov	ax, SelectorFlatRW
+;	mov	ds, ax
+;	mov	es, ax
+;	mov	ss, ax
+;	mov	fs, ax
+;
 
 	; 重新放置 KERNEL
 	call	InitKernel
@@ -873,186 +766,186 @@ LABEL_SEG_CODE32:
 
 
 
-
-	;==== ClockHandler ===========================
-	_ClockHandler:
-	ClockHandler	equ	_ClockHandler - $$
-		inc	byte	[gs:(80*3 + 75)*2]
-		mov	al, 20h
-		out	20h, al
-		iretd
-
-	;==== ClockHandler End========================
-
-
-
-	;==== UserIntHandler =========================
-	_UserIntHandler:
-	UserIntHandler	equ	_UserIntHandler - $$
-		mov	ah, 0ch
-		mov	al, 'I'
-		mov	[gs:(80*3 + 75)*2], ax
-		;jmp	$
-		iretd
-
-	;==== UserIntHandler End =====================
-
-
-
-	;==== SpuriousHandler ========================
-	_SpuriousHandler:
-	SpuriousHandler	equ	_SpuriousHandler - $$
-		mov	ah, 0ch
-		mov	al, '!'
-		mov	[gs:(80*4 + 75)*2], ax
-		;jmp	$
-		iretd
-
-	;==== SpuriousHandler End ====================
-
-
-
-
-	;==== SetRealMode8259A =======================
-	SetRealMode8259A:
-		mov	ax, SelectorData
-		mov	fs, ax
-		
-		mov	al, 00010101b
-		out	020h, al
-		call	io_delay
-
-		mov	al, 008h
-		out	021h, al
-		call	io_delay
-
-		mov	al, 004h
-		out	021h, al
-		call	io_delay
-
-		mov	al, 001h
-		out	021h, al
-		call	io_delay
-
-		mov	al, [fs:SavedIMREG]
-		out	021h, al
-		call	io_delay
-
-		ret
-	;==== SetRealMode8259A End ===================
-
-
-
-
-	;==== Init8259A ==============================
-	Init8259A:
-		mov	al, 011h
-		out	020h, al
-		call	io_delay
-
-		out	0a0h, al
-		call	io_delay
-
-
-		mov	al, 020h
-		out	021h, al
-		call	io_delay
-
-		mov	al, 028h
-		out	0a1h, al
-		call	io_delay
-
-
-		mov	al, 004h
-		out	021h, al
-		call	io_delay
-
-		mov	al, 002h
-		out	0a1h, al
-		call	io_delay
-
-
-		mov	al, 001h
-		out	021h, al
-		call	io_delay
-
-		out	0a1h, al
-		call	io_delay
-
-		; - - - - - - - -
-		mov	al, 11111110b
-		out	021h, al
-		call	io_delay
-
-		mov	al, 11111111b
-		out	0a1h, al
-		call	io_delay
-
-		ret
-
-		;---------------
-		io_delay:
-			nop
-			nop
-			nop
-			nop
-		ret
-	;==== Init8259A  End =========================
-
-
-
-
-	;==== Foo ====================================
-	LABEL_Foo:
-		mov	ax, SelectorVideo
-		mov	gs, ax
-
-		mov	edi, (80*20 + 0)*2
-		mov	ah, 0ch
-		mov	al, 'F'
-		mov	[gs:edi], ax
-
-		mov	edi, (80*20 + 1)*2
-		mov	ah, 0ch
-		mov	al, 'o'
-		mov	[gs:edi], ax
-
-		mov	edi, (80*20 + 2)*2
-		mov	ah, 0ch
-		mov	al, 'o'
-		mov	[gs:edi], ax
-
-		retf
-	Foo_Len		equ	$ - LABEL_Foo
-	;==== Foo End =================================
-
-
-
-
-	;==== Bar =====================================
-	LABEL_Bar:
-		mov	ax, SelectorVideo
-		mov	gs, ax
-
-		mov	edi, (80*21 + 0)*2
-		mov	ah, 0ch
-		mov	al, 'B'
-		mov	[gs:edi], ax
-
-		mov	edi, (80*21 + 1)*2
-		mov	ah, 0ch
-		mov	al, 'a'
-		mov	[gs:edi], ax
-
-		mov	edi, (80*21 + 2)*2
-		mov	ah, 0ch
-		mov	al, 'r'
-		mov	[gs:edi], ax
-
-		retf
-	Bar_Len		equ	$ - LABEL_Bar
-	;==== Bar End =================================
-
+;
+;	;==== ClockHandler ===========================
+;	_ClockHandler:
+;	ClockHandler	equ	_ClockHandler - $$
+;		inc	byte	[gs:(80*3 + 75)*2]
+;		mov	al, 20h
+;		out	20h, al
+;		iretd
+;
+;	;==== ClockHandler End========================
+;
+;
+;
+;	;==== UserIntHandler =========================
+;	_UserIntHandler:
+;	UserIntHandler	equ	_UserIntHandler - $$
+;		mov	ah, 0ch
+;		mov	al, 'I'
+;		mov	[gs:(80*3 + 75)*2], ax
+;		;jmp	$
+;		iretd
+;
+;	;==== UserIntHandler End =====================
+;
+;
+;
+;	;==== SpuriousHandler ========================
+;	_SpuriousHandler:
+;	SpuriousHandler	equ	_SpuriousHandler - $$
+;		mov	ah, 0ch
+;		mov	al, '!'
+;		mov	[gs:(80*4 + 75)*2], ax
+;		;jmp	$
+;		iretd
+;
+;	;==== SpuriousHandler End ====================
+;
+;
+;
+;
+;	;==== SetRealMode8259A =======================
+;	SetRealMode8259A:
+;		mov	ax, SelectorData
+;		mov	fs, ax
+;		
+;		mov	al, 00010101b
+;		out	020h, al
+;		call	io_delay
+;
+;		mov	al, 008h
+;		out	021h, al
+;		call	io_delay
+;
+;		mov	al, 004h
+;		out	021h, al
+;		call	io_delay
+;
+;		mov	al, 001h
+;		out	021h, al
+;		call	io_delay
+;
+;		mov	al, [fs:SavedIMREG]
+;		out	021h, al
+;		call	io_delay
+;
+;		ret
+;	;==== SetRealMode8259A End ===================
+;
+;
+;
+;
+;	;==== Init8259A ==============================
+;	Init8259A:
+;		mov	al, 011h
+;		out	020h, al
+;		call	io_delay
+;
+;		out	0a0h, al
+;		call	io_delay
+;
+;
+;		mov	al, 020h
+;		out	021h, al
+;		call	io_delay
+;
+;		mov	al, 028h
+;		out	0a1h, al
+;		call	io_delay
+;
+;
+;		mov	al, 004h
+;		out	021h, al
+;		call	io_delay
+;
+;		mov	al, 002h
+;		out	0a1h, al
+;		call	io_delay
+;
+;
+;		mov	al, 001h
+;		out	021h, al
+;		call	io_delay
+;
+;		out	0a1h, al
+;		call	io_delay
+;
+;		; - - - - - - - -
+;		mov	al, 11111110b
+;		out	021h, al
+;		call	io_delay
+;
+;		mov	al, 11111111b
+;		out	0a1h, al
+;		call	io_delay
+;
+;		ret
+;
+;		;---------------
+;		io_delay:
+;			nop
+;			nop
+;			nop
+;			nop
+;		ret
+;	;==== Init8259A  End =========================
+;
+;
+;
+;
+;	;==== Foo ====================================
+;	LABEL_Foo:
+;		mov	ax, SelectorVideo
+;		mov	gs, ax
+;
+;		mov	edi, (80*20 + 0)*2
+;		mov	ah, 0ch
+;		mov	al, 'F'
+;		mov	[gs:edi], ax
+;
+;		mov	edi, (80*20 + 1)*2
+;		mov	ah, 0ch
+;		mov	al, 'o'
+;		mov	[gs:edi], ax
+;
+;		mov	edi, (80*20 + 2)*2
+;		mov	ah, 0ch
+;		mov	al, 'o'
+;		mov	[gs:edi], ax
+;
+;		retf
+;	Foo_Len		equ	$ - LABEL_Foo
+;	;==== Foo End =================================
+;
+;
+;
+;
+;	;==== Bar =====================================
+;	LABEL_Bar:
+;		mov	ax, SelectorVideo
+;		mov	gs, ax
+;
+;		mov	edi, (80*21 + 0)*2
+;		mov	ah, 0ch
+;		mov	al, 'B'
+;		mov	[gs:edi], ax
+;
+;		mov	edi, (80*21 + 1)*2
+;		mov	ah, 0ch
+;		mov	al, 'a'
+;		mov	[gs:edi], ax
+;
+;		mov	edi, (80*21 + 2)*2
+;		mov	ah, 0ch
+;		mov	al, 'r'
+;		mov	[gs:edi], ax
+;
+;		retf
+;	Bar_Len		equ	$ - LABEL_Bar
+;	;==== Bar End =================================
+;
 
 
 
@@ -1105,96 +998,98 @@ LABEL_SEG_CODE32:
 
 
 
-
-	;==== PSwitch =================================
-	; Page Switch
-	PSwitch:
-	mov	ax, SelectorData
-	mov	ds, ax
-	mov	es, ax
-
-	xor	edx, edx
-	mov	dword eax, [dwRAMSize]
-	mov	ebx, 400000h
-	div	ebx
-	mov	ecx, eax
-	test	edx, edx
-	jz	.no_remainder2
-	inc	ecx
-	.no_remainder2:
-	push	ecx
-
-	mov	ax, SelectorDir2
-	mov	es, ax
-	mov	edi, 0
-	xor	eax, eax
-	mov	eax, PageTblBase2 | PG_P | PG_USU | PG_RWW
-	sdir2:	
-		mov	[es:edi], eax
-		add	edi, 4
-		add	eax, 4*1024
-	loop	sdir2
-
-
-	mov	ax, SelectorTbl2
-	mov	es, ax
-	mov	edi, 0
-	pop	eax		; eax <- ecx
-	mov	ebx, 1024
-	mul	ebx
-	mov	ecx, eax
-	xor	eax, eax
-	mov	eax, PG_P | PG_USU | PG_RWW
-	stbl2:	
-		mov	[es:edi], eax
-		add	edi, 4
-		add	eax, 4*1024
-	loop	stbl2
-
-
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;;;;;;;;修改页表;;;;;;;;;;;;;;;;;;;;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov	ax, SelectorTbl2
-	mov	es, ax
-	mov	eax, BaseDemo
-	shr	eax, 10		; 即 eax /= 4*1024; eax *= 4
-	mov	edi, eax
-	;mov	dword	eax, [es:edi]	;这句只为看看原来存的是什么
-	mov	dword	[es:edi], BaseBar | PG_P | PG_USU | PG_RWW
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;;;;;;修改结束;;;;;;;;;;;;;;;;;;;;;;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-	mov	eax, PageDirBase2
-	mov	cr3, eax
-	mov	eax, cr0
-	or	eax, 80000000h
-	mov	cr0, eax
-
-	jmp	short .nop2
-	.nop2:
-		nop
-	ret
-	;==== PSwitch End =============================
-
-
-
+;
+;	;==== PSwitch =================================
+;	; Page Switch
+;	PSwitch:
+;	mov	ax, SelectorData
+;	mov	ds, ax
+;	mov	es, ax
+;
+;	xor	edx, edx
+;	mov	dword eax, [dwRAMSize]
+;	mov	ebx, 400000h
+;	div	ebx
+;	mov	ecx, eax
+;	test	edx, edx
+;	jz	.no_remainder2
+;	inc	ecx
+;	.no_remainder2:
+;	push	ecx
+;
+;	mov	ax, SelectorDir2
+;	mov	es, ax
+;	mov	edi, 0
+;	xor	eax, eax
+;	mov	eax, PageTblBase2 | PG_P | PG_USU | PG_RWW
+;	sdir2:	
+;		mov	[es:edi], eax
+;		add	edi, 4
+;		add	eax, 4*1024
+;	loop	sdir2
+;
+;
+;	mov	ax, SelectorTbl2
+;	mov	es, ax
+;	mov	edi, 0
+;	pop	eax		; eax <- ecx
+;	mov	ebx, 1024
+;	mul	ebx
+;	mov	ecx, eax
+;	xor	eax, eax
+;	mov	eax, PG_P | PG_USU | PG_RWW
+;	stbl2:	
+;		mov	[es:edi], eax
+;		add	edi, 4
+;		add	eax, 4*1024
+;	loop	stbl2
+;
+;
+;
+;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	;;;;;;;;;修改页表;;;;;;;;;;;;;;;;;;;;
+;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	mov	ax, SelectorTbl2
+;	mov	es, ax
+;	mov	eax, BaseDemo
+;	shr	eax, 10		; 即 eax /= 4*1024; eax *= 4
+;	mov	edi, eax
+;	;mov	dword	eax, [es:edi]	;这句只为看看原来存的是什么
+;	mov	dword	[es:edi], BaseBar | PG_P | PG_USU | PG_RWW
+;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	;;;;;;;修改结束;;;;;;;;;;;;;;;;;;;;;;
+;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+;
+;	mov	eax, PageDirBase2
+;	mov	cr3, eax
+;	mov	eax, cr0
+;	or	eax, 80000000h
+;	mov	cr0, eax
+;
+;	jmp	short .nop2
+;	.nop2:
+;		nop
+;	ret
+;	;==== PSwitch End =============================
+;
 
 
 
 
-	;==== PSwitch End =============================
+
+
+
 	;==== SetupPaging =============================
 	;Start Paging...
 	SetupPaging:
-		mov	ax, SelectorData
-		mov	ds, ax
-		mov	es, ax
+
+;		mov	ax, SelectorData
+;		mov	ds, ax
+;		mov	es, ax
 
 		xor	edx, edx
+;		mov	dword eax, [dwRAMSize]
 		mov	dword eax, [dwRAMSize]
 		mov	ebx, 400000h
 		div	ebx
@@ -1204,10 +1099,10 @@ LABEL_SEG_CODE32:
 		inc	ecx
 		.no_remainder:
 		push	ecx
-
-		mov	ax, SelectorDir
-		mov	es, ax
-		mov	edi, 0
+;
+;		mov	ax, SelectorDir
+;		mov	es, ax
+		mov	edi, PageDirBase
 		xor	eax, eax
 		mov	eax, PageTblBase | PG_P | PG_USU | PG_RWW
 		sdir:	
@@ -1217,9 +1112,9 @@ LABEL_SEG_CODE32:
 		loop	sdir
 
 
-		mov	ax, SelectorTbl
-		mov	es, ax
-		mov	edi, 0
+;		mov	ax, SelectorTbl
+;		mov	es, ax
+		mov	edi, PageTblBase
 		pop	eax
 		mov	ebx, 1024
 		mul	ebx
@@ -1287,21 +1182,21 @@ LABEL_DATA:
 				dd	0
 	_SavedIMREG:		db	0
 
-	szPMMessage		equ	_szPMMessage	-	$$
-	szTitle			equ	_szTitle	-	$$
-	szRAMSize		equ	_szRAMSize	-	$$
-	szReturn		equ	_szReturn	-	$$
-	dwDispPos		equ	_dwDispPos	-	$$
-	ARDS			equ	_ARDS		-	$$
-		dwBAL		equ	_dwBAL		-	$$
-		dwBAH		equ	_dwBAH		-	$$
-		dwLL		equ	_dwLL		-	$$
-		dwType		equ	_dwType		-	$$
-	dwMemBlockCount		equ	_dwMemBlockCount-	$$
-	dwRAMSize		equ	_dwRAMSize	-	$$
-	memChkBuf		equ	_memChkBuf	-	$$
-	SavedIdtr		equ	_SavedIdtr	-	$$
-	SavedIMREG		equ	_SavedIMREG	-	$$
+	szPMMessage		equ	_szPMMessage	+	090000h
+	szTitle			equ	_szTitle	+	090000h
+	szRAMSize		equ	_szRAMSize	+	090000h
+	szReturn		equ	_szReturn	+	090000h
+	dwDispPos		equ	_dwDispPos	+	090000h
+	ARDS			equ	_ARDS		+	090000h
+		dwBAL		equ	_dwBAL		+	090000h
+		dwBAH		equ	_dwBAH		+	090000h
+		dwLL		equ	_dwLL		+	090000h
+		dwType		equ	_dwType		+	090000h
+	dwMemBlockCount		equ	_dwMemBlockCount+	090000h
+	dwRAMSize		equ	_dwRAMSize	+	090000h
+	memChkBuf		equ	_memChkBuf	+	090000h
+	SavedIdtr		equ	_SavedIdtr	+	090000h
+	SavedIMREG		equ	_SavedIMREG	+	090000h
 
 DataLen			equ	$ - $$
 ;=============================================================================================	
