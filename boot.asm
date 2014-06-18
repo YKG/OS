@@ -284,6 +284,7 @@ GetFATEntry:
 	call	ReadSector
 
 	pop	ax
+	add	ax, bx
 	mov	di, ax
 	mov	word ax, [es:di]
 
@@ -308,7 +309,7 @@ GetFATEntryReturn:
 
 
 DestSeg			equ	09000h
-DestOffset		equ	0
+DestOffset		equ	0100h
 RootFirstSectorNo	equ	19	; 根目录第一扇区号
 
 

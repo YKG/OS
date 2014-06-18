@@ -1,2 +1,3 @@
-#sudo cp -r $1 /mnt/floppy
-sudo cp -fv loader.bin  /mnt/floppy
+./mount.sh
+sudo cp -r loader.bin /mnt/floppy
+./umount.sh

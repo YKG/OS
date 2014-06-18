@@ -1,4 +1,4 @@
-org	0000h
+org	0100h
 
 	mov	ax, 0B800h
 	mov	gs, ax
