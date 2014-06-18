@@ -5,6 +5,7 @@
 	#define IDT_SIZE		256
 	#define LDT_SIZE		128
 
+
 	#define	DA_386CGate		0x08C
 	#define	DA_386IGate		0x08E
 	#define	DA_386TGate		0x08F
@@ -27,6 +28,11 @@
 	#define	SA_TIL			0x04
 
 	#define	SelectorFlatC	0x008
+	#define	SelectorFlatRW	0x010
+	#define	SelectorVIDEO	0x018
+	#define	SelectorLDT		0x020
+	#define	SelectorTSS		0x028
+
 	#define INT_VECTOR_IRQ0 0x020
 	#define INT_VECTOR_IRQ1 0x028
 
@@ -41,6 +47,8 @@
 	#define	PORT_S_ICW4		0x0A1
 	#define	PORT_M_OCW1		0x021
 	#define	PORT_S_OCW1		0x0A1
+
+
 
 
 #endif

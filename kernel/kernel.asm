@@ -13,7 +13,9 @@ extern	exception_handler
 extern	spurious_irq
 extern	TestA
 extern	DispString
+extern	DispInt
 extern	delay
+extern	k_reenter
 
 [section .bss]
 resb	2*1024
@@ -169,6 +171,7 @@ stack_segment_sault_exception:	; vector=0x0c
 	jmp	exception
 
 general_protection_exception:	; vector=0x0d
+xchg	bx, bx
 	push	13		; #GP 有 Error Code
 	jmp	exception
 
@@ -220,7 +223,6 @@ exception:
 
 hwint00:
 xchg	bx, bx
-
 	pushad
 	push	ds
 	push	es
@@ -231,9 +233,22 @@ xchg	bx, bx
 	mov	al, 0x20	; 发送EOI
 	out	0x20, al
 
+	inc	dword [ds:k_reenter]
+	cmp	dword [ds:k_reenter], 0
+	jne	.reenter
+
+	sti
+	
 	push	clock_int_msg
 	call	DispString
 	add	esp, 4
+
+;	call	delay
+
+	cli
+
+.reenter:	
+	dec	dword [ds:k_reenter]
 
 	pop	gs
 	pop	fs
@@ -242,7 +257,6 @@ xchg	bx, bx
 	popad
 
 	iretd
-
 
 	push	0		; int 0
 	jmp	hwinterupt
@@ -328,7 +342,7 @@ restart:
 xchg	bx, bx
 ;	lea	ebx, [gdt_ptr]	; 等价与 mov ebx, gdt_ptr
 
-	
+
 	mov	dword [tss + 4], esp	; esp0
 ;	xor	eax, eax
 ;	mov	ax, ss
@@ -365,8 +379,5 @@ xchg	bx, bx
 
 
 
-
 [section .data]
 clock_int_msg:	db	'^', 0
-
-

@@ -112,8 +112,8 @@ void exception_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags)
 	}
 	disp_pos = 0;
 
-
-	DispString("vec_no:   ");
+/*
+//	DispString("vec_no:   ");
 	DispInt(vec_no);
 	DispString("  ");
     DispString(msg[vec_no]);
@@ -125,6 +125,20 @@ void exception_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags)
 	DispInt(cs);
 	DispString("\neflags:   ");
 	DispInt(eflags);
+*/
+	disp_color_str("vec_no:   ", 0x7F);
+	DispInt(vec_no);
+	DispString("  ");
+    DispString(msg[vec_no]);
+	disp_color_str("\nerr_code: ", 0x7F);
+	DispInt(err_code);
+	disp_color_str("\neip:      ", 0x7F);
+	DispInt(eip);
+	disp_color_str("\ncs:       ", 0x7F);
+	DispInt(cs);
+	disp_color_str("\neflags:   ", 0x7F);
+	DispInt(eflags);
+
 }
 
 

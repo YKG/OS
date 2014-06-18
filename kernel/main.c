@@ -35,13 +35,13 @@ void kernel_main()
 	DispInt((u32)ldts);
 	DispString("\ngdts: ");
 	DispInt((u32)gdt);
-	disp_color_str("\nldts: ", 0x7F);	
+//	disp_color_str("\nldts: ", 0x7F);	
 
 
 
 
 
-
+	k_reenter = -1;
 
 	restart();
 
@@ -61,7 +61,7 @@ void delay()
 {
 	int j, k;
 
-	for (j = 0; j < 100; j++)
+	for (j = 0; j < 40; j++)
 	{
 		for (k = 0; k < 10000; k++)
 		{

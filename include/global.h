@@ -1,6 +1,7 @@
 #ifndef	_OS_GLOBAL_VAR_H_
 #define	_OS_GOLBAL_VAR_H_
 
+
 u32			disp_pos;
 u32			keyboardint_count;
 u8			gdt_ptr[6];
@@ -14,5 +15,7 @@ DESCRIPTOR	ldts[LDT_SIZE];
 
 
 TSS			tss;
+
+u32			k_reenter;	/* 处理中断重入 */
 
 #endif

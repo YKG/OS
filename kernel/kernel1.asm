@@ -169,6 +169,7 @@ stack_segment_sault_exception:	; vector=0x0c
 	jmp	exception
 
 general_protection_exception:	; vector=0x0d
+xchg	bx, bx
 	push	13		; #GP 有 Error Code
 	jmp	exception
 
@@ -220,10 +221,30 @@ exception:
 
 hwint00:
 xchg	bx, bx
+	pushad
+	push	ds
+	push	es
+	push	fs
+	push	gs
+
+	inc	byte [gs:0]
 	mov	al, 0x20	; 发送EOI
 	out	0x20, al
-	iretd
 
+	sti
+	push	clock_int_msg
+	call	DispString
+	add	esp, 4
+
+	call	delay
+
+	pop	gs
+	pop	fs
+	pop	es
+	pop	ds
+	popad
+
+	iretd
 
 	push	0		; int 0
 	jmp	hwinterupt
@@ -309,7 +330,7 @@ restart:
 xchg	bx, bx
 ;	lea	ebx, [gdt_ptr]	; 等价与 mov ebx, gdt_ptr
 
-	
+
 	mov	dword [tss + 4], esp	; esp0
 ;	xor	eax, eax
 ;	mov	ax, ss
@@ -345,3 +366,6 @@ xchg	bx, bx
 	jmp	$
 
 
+
+[section .data]
+clock_int_msg:	db	'^', 0
