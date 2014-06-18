@@ -35,7 +35,7 @@ void cstart()
 	*gdt_base  = (u32)gdt;
 	
 
-	DispString("\n\n\nHello, world!");
+	DispString("\n\n\nHello, world! By YKG");
 	DispString("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
 				"======== cstart =========");
 }

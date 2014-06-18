@@ -671,52 +671,52 @@ LABEL_SEG_CODE32:
 	add	esp, 4
 
 
-;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	;放置Foo的代码到BaseFoo(0x401000)处
-;	mov	ax, SelectorFlatRW
-;	mov	es, ax
-;	mov	esi, BaseFoo
-;	mov	ax, SelectorCode32;cs
-;	mov	ds, ax
-;	mov	edi, LABEL_Foo - $$
-;	mov	cx, Foo_Len
-;	.cpyfoo:
-;		mov	byte	al, [ds:edi]
-;		mov	byte	[es:esi], al
-;		inc	edi
-;		inc	esi
-;	loop	.cpyfoo
-;
-;	;-------------------------------------
-;	;放置Bar的代码到BaseBar(0x501000)处
-;	mov	ax, SelectorFlatRW
-;	mov	es, ax
-;	mov	esi, BaseBar
-;	mov	ax, cs
-;	mov	ds, ax
-;	mov	edi, LABEL_Bar - $$
-;	mov	cx, Bar_Len
-;	.cpybar:
-;		mov	byte	al, [ds:edi]
-;		mov	byte	[es:esi], al
-;		inc	edi
-;		inc	esi
-;	loop	.cpybar
-;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-;
-;	; 页表切换实验
-;	call	SetupPaging
-;	call	SelectorFlatC:BaseDemo
-;	call	PSwitch
-;	call	SelectorFlatC:BaseDemo
-;
-;
-;	; 中断实验
-;	call	Init8259A
-;	int	7fh
-;	int	80h
-;	sti
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;放置Foo的代码到BaseFoo(0x401000)处
+	mov	ax, SelectorFlatRW
+	mov	es, ax
+	mov	esi, BaseFoo
+	mov	ax, SelectorCode32;cs
+	mov	ds, ax
+	mov	edi, LABEL_Foo - $$
+	mov	cx, Foo_Len
+	.cpyfoo:
+		mov	byte	al, [ds:edi]
+		mov	byte	[es:esi], al
+		inc	edi
+		inc	esi
+	loop	.cpyfoo
+
+	;-------------------------------------
+	;放置Bar的代码到BaseBar(0x501000)处
+	mov	ax, SelectorFlatRW
+	mov	es, ax
+	mov	esi, BaseBar
+	mov	ax, cs
+	mov	ds, ax
+	mov	edi, LABEL_Bar - $$
+	mov	cx, Bar_Len
+	.cpybar:
+		mov	byte	al, [ds:edi]
+		mov	byte	[es:esi], al
+		inc	edi
+		inc	esi
+	loop	.cpybar
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+	; 页表切换实验
+	call	SetupPaging
+	call	SelectorFlatC:BaseDemo
+	call	PSwitch
+	call	SelectorFlatC:BaseDemo
+
+
+	; 中断实验
+	call	Init8259A
+	int	7fh
+	int	80h
+	sti
 
 
 

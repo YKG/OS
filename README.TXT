@@ -1,16 +1,8 @@
-本章实验f之前做的都是7月1号做的
-
-f实验，昨天夜里一直弄到12点40多。后来是故意少复制了2个Program header，
-并且GDTR重新赋值，也是复制作者的代码，终于通过。
-
-今天，也就是7月2号，做了一下工作：
-重新写了GDTR的更改过程
-重新写了DispString函数
-改正了loader.asm中复制Program Header代码段中的错误
-
-
-
-		———— 2011-7-2 11:21:52
+这个和f的区别是：
+	把f中的kernel.asm 分离成三个文件：
+		kernel.asm
+		string.asm	; MemCopy 函数
+		kliba.asm	; DispString 函数
 
 
 
