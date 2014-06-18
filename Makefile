@@ -10,7 +10,9 @@ ASM_BOOTER_ARGS	= -I boot/include/ # 后面的"/"务必加上！还得我花了�
 ASM_LOADER_ARGS	= -I boot/include/ # 后面的"/"务必加上！还得我花了好多时间！
 ASM_KERNEL_ARGS	= -f elf
 CC_KERNEL_ARGS	= -I include/
-OBJS		= kernel/kernel.o kernel/start.o kernel/i8259.o kernel/protect.o lib/string.o lib/kliba.o kernel/main.o kernel/syscall.o kernel/proc.o kernel/clock.o 
+OBJS		= kernel/kernel.o kernel/start.o kernel/i8259.o kernel/protect.o lib/string.o \
+		lib/kliba.o kernel/main.o kernel/syscall.o kernel/proc.o kernel/clock.o \
+		kernel/global.o
 LD_KERNEL_ARGS	= -s -Ttext 0x030400
 
 
@@ -70,6 +72,10 @@ kernel/proc.o: kernel/proc.c include/const.h include/type.h include/proto.h incl
 
 kernel/clock.o: kernel/clock.c include/const.h include/type.h include/proto.h include/global.h include/string.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
+
+kernel/global.o: kernel/global.c include/const.h include/type.h include/proto.h include/global.h include/string.h
+	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
+
 
 kernel/kernel.o: kernel/kernel.asm
 	$(ASM) $(ASM_KERNEL_ARGS) -o $@ $<

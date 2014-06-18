@@ -5,28 +5,27 @@
 #include "global.h"
 
 
-
 void kernel_main()
 {
 	u32 i;
 
-	TASK		* p_task;
+
 	PROCESS		* p_proc;
 	u16			* p_selector;
 	u32			  task_stack_top;
+//	TASK		* p_task;
+//	TASK		tasks[] = {
+//					{(u32)TestA, 0x8000},
+//					{(u32)TestB, 0x8000},
+//					{(u32)TestC, 0x8000},
+////					{(u32)TestD, 0x8000},
+//					{0, 0}
+//				};
 
-	TASK		tasks[] = {
-					{(u32)TestA, 0x8000},
-					{(u32)TestB, 0x8000},
-					{(u32)TestC, 0x8000},
-//					{(u32)TestD, 0x8000},
-					{0, 0}
-				};
+
+
+
 	ticks = 0;
-
-
-
-
 	disp_pos = (80*15 + 0)*2;
 	DispString("======== kernel_main =========\n");
 
@@ -34,15 +33,28 @@ void kernel_main()
 	task_stack_top	= (u32)task_stack + TASK_STACK_SIZE;
 	tss.ss0			= SelectorFlatRW;
 
-	p_task			= task_table;
-	n_tasks			= 0;
-	for (; tasks[n_tasks].initial_eip && tasks[n_tasks].stack_size; p_task++, n_tasks++)
-	{
-		p_task->initial_eip = tasks[n_tasks].initial_eip;
-		p_task->stack_size  = tasks[n_tasks].stack_size;
-	}
+//	p_task			= task_table;
+//	n_tasks			= 0;
+//	for (; tasks[n_tasks].initial_eip && tasks[n_tasks].stack_size; p_task++, n_tasks++)
+//	{
+//		p_task->initial_eip = tasks[n_tasks].initial_eip;
+//		p_task->stack_size  = tasks[n_tasks].stack_size;
+//	}
+//	n_tasks			= 3;
 		
-	for (i = 0; i < n_tasks; i++)
+//	for (i = 0; i < n_tasks; i++)	
+////	disp_int(NR_TASKS);	
+//	for (i = 0; i < NR_TASKS; i++)
+//	{
+//		disp_int(i);
+//		disp_color_str("  ", 0x0c);
+//		disp_int(task_table[i].initial_eip);
+//		disp_color_str("  ", 0x0c);
+//		disp_int(task_table[i].stack_size);
+//	}
+
+
+	for (i = 0; i < NR_TASKS; i++)
 	{
 		p_proc = &proc_table[i];
 		p_proc->proc_selector = SelectorLDT + i * 0x8;		// LDT 描述符在GDT中的偏移
@@ -104,9 +116,7 @@ void TestA()
 	while (1)
 	{
 		disp_int(get_ticks());
-//		DispInt(get_ticks());
 		disp_color_str("A ", 0x0c);
-//		DispInt(i++);
 
 		delay();
 	}

@@ -18,7 +18,7 @@ void clock_handler(u32 vector_no)
 
 /*	delay(); */
 
-	if (p_proc_ready < &proc_table[n_tasks - 1])
+	if (p_proc_ready < &proc_table[NR_TASKS - 1])
 	{
 		p_proc_ready++;
 	}

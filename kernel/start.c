@@ -4,9 +4,6 @@
 #include "string.h"
 #include "global.h"
 
-#include "global.c"
-
-
 void cstart()
 {	
 	DispString("\n\nHello, world! By YKG\ncstart address: ");
