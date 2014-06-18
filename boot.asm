@@ -36,7 +36,7 @@ LABEL_START:
 	mov	ss, ax
 	mov	sp, 0100h
 
-xchg	bx, bx
+
 	mov	ah, 000h
 	mov	dl, 0		; A盘
 	int	13h		; 复位软驱
@@ -56,7 +56,7 @@ xchg	bx, bx
 
 	mov	ax, DestSeg
 	mov	es, ax
-	mov	bx, DestOffset	; 设置es:bx 为 0x9000:0
+	mov	bx, DestOffset	; 设置es:bx 为 0x9000:0100
 
 	
 LABEL_SEARCH_IN_ROOT_DIR_LOOP:
@@ -105,6 +105,7 @@ LABEL_GO_TO_NEXT_SECTOR:
 
 
 LABEL_NOT_FOUND:
+	call	cls		; 清屏
 	mov	ax, cs
 	mov	ds, ax
 	mov	si, LoaderNoLoader
@@ -123,45 +124,90 @@ LABEL_NOT_FOUND:
 
 LABEL_FOUND:
 xchg	bx, bx
-	
+;------------------------------------------------
+;清屏
+	mov	ax, 0600h	; ah = 6, al = 0
+	mov	bx, 0700h	; 黑底白字
+	mov	cx, 0		; 左上角(0, 0)
+	mov	dx, 0184fh	; 右下角(80, 50)
+	int	10h
+;------------------------------------------------
+	call	cls		; 清屏
+
+
+	; 打印 Loading
+	push	di
+	mov	ax, cs
+	mov	ds, ax
+	mov	si, LoaderFound
+	mov	di, (80*0 + 0)*2
+	call	DispStr
+	mov	si, di		; 保存下一个字符位置 ？？？
+	pop	di
+
+
+
 	mov	word ax, [es:di - 11 + 32 - 4 - 2]
 
 	mov	dx, DestSeg
 	mov	es, dx
-	mov	bx, DestOffset	; 设置es:bx 为 0x9000:0
+	mov	bx, DestOffset	; 设置es:bx 为 0x9000:0100
 
 LABEL_GO_ON_LOADING:	
+
+	; 每次循环在Loading后打印一个 '.'
+	push	ax
+	mov	ah, 0ch
+	mov	al, '.'
+	mov	word [gs:si], ax
+	add	si, 2
+	pop	ax
+
+
+
+
+
 	push	ax
 	add	ax, 19 + 14 - 2
 	mov	byte [bSectorsToRead], 1 ; 读1个扇区
 	call	ReadSector
-
-	
 	pop	ax
+
+
+
 	call	GetFATEntry
-xchg	bx, bx
+
 	cmp	ax, 0fffh
 	je	LABEL_LOADER_LOADED
 	add	bx, 512		; 继续加载到下一扇区
 	jmp	LABEL_GO_ON_LOADING
 
-	jmp	$
-
-
-
-	mov	ax, cs
-	mov	ds, ax
-	mov	si, LoaderFound
-	mov	di, (80*3 + 0)*2
-	call	DispStr
-	jmp	$
-
 
 
 
 LABEL_LOADER_LOADED:
+
+	; 打印 Ready.
+	push	di
+	mov	ax, cs
+	mov	ds, ax
+	mov	si, LoaderReady
+	mov	di, (80*1 + 0)*2
+	call	DispStr
+	mov	si, di		; 保存下一个字符位置 ？？？
+	pop	di
+
+
+
+;#############################################################
+;#############################################################
+;####### 神圣的一跳！ ########################################
+;#############################################################
 	jmp	DestSeg:DestOffset
-	
+;#############################################################
+;#############################################################
+;#############################################################
+;#############################################################
 
 
 
@@ -220,18 +266,18 @@ ReadSector:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; DispStr
 ;	参数：	ds:si 指向待显示字符串，字符串以0结束 
-;		di    es:di 为待显示字符串首地址
+;		di    gs:di 为待显示字符串首地址
 ;
 DispStr:
 	mov	ax, 0b800h
-	mov	es, ax
+	mov	gs, ax
 	
 	mov	ah, 0ch
 .disp_str_go_on:
 	mov	byte al, [ds:si]
 	test	al, al
 	jz	.return
-	mov	word [es:di], ax
+	mov	word [gs:di], ax
 	inc	si
 	add	di, 2
 	jmp	.disp_str_go_on
@@ -284,9 +330,8 @@ GetFATEntry:
 	call	ReadSector
 
 	pop	ax
-	add	ax, bx
 	mov	di, ax
-	mov	word ax, [es:di]
+	mov	word ax, [es:bx + di]
 
 	test	dx, dx		; 判断dx是不是偶数
 	jz	FAT_ENTRY_EVEN
@@ -303,19 +348,47 @@ GetFATEntryReturn:
 	pop	bx
 	
 	ret
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+
+
+;----------------------------------------------------------------------------
+; cls/clear 清屏
+
+cls:
+	push	ax
+	push	bx
+	push	cx
+	push	dx
+
+	mov	ax, 0600h	; ah = 6, al = 0
+	mov	bx, 0700h	; 黑底白字
+	mov	cx, 0		; 左上角(0, 0)
+	mov	dx, 0184fh	; 右下角(80, 50)
+	int	10h
+
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
+
+	ret
+;----------------------------------------------------------------------------
 
 
 
 
 DestSeg			equ	09000h
-DestOffset		equ	0100h
+DestOffset		equ	0100h	; 注意！！这个偏移要和loader第一句org后面的偏移一致，否则不能工作！
 RootFirstSectorNo	equ	19	; 根目录第一扇区号
 
 
 LoaderName:		db	'LOADER  BIN'
-LoaderFound:		db	'LOADER FOUND!', 0
-LoaderNoLoader:		db	'NO LOADER', 0
+LoaderFound:		db	'Loading', 0
+LoaderNoLoader:		db	0;'NO LOADER', 0
+LoaderReady		db	'Ready.', 0
 bSectorsToRead:		db	0
 bRootSectorNum:		db	14
 bIndexForRootSectorLoop:db	0

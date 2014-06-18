@@ -3,7 +3,7 @@
 
 %include "pm.inc"
 
-org	0100h
+org	0100h			; 这个要和loader加载到的段的偏移一致，对应boot.asm中的DestOffset
 xchg	bx, bx
 jmp	LABEL_BEGIN
 
@@ -121,7 +121,7 @@ _ARDS:
 _dwMemBlockCount:	dd	0	
 _dwRAMSize:	dd	0	
 _memChkBuf:	times	512	db	0
-_SavedIdtr:	dw	0
+_SavedIdtr:	dw	0	; IDTR 的大小和 GDTR一致，48bit
 		dd	0
 _SavedIMREG:	db	0
 
@@ -255,10 +255,6 @@ shr	eax, 16
 mov	byte [Code32_DESC + 4], al
 mov	byte [Code32_DESC + 7], ah
 
-
-
-xchg	bx, bx
-
 ;-----------GDT----------------------
 xor	eax, eax
 mov	ax, cs
@@ -300,8 +296,8 @@ mov	ss, ax
 
 
 lidt	[_SavedIdtr]
-mov	al, [_SavedIMREG]
-out	21h, al
+;mov	al, [_SavedIMREG]
+;out	21h, al
 
 
 in	al, 92h
@@ -445,7 +441,7 @@ call	SelectorFlatC:BaseDemo
 call	Init8259A
 int	7fh
 int	80h
-sti
+;sti
 
 ;jmp	$
 xchg	bx, bx
@@ -502,7 +498,8 @@ SetRealMode8259A:
 	mov	ax, SelectorData
 	mov	fs, ax
 	
-	mov	al, 00010101b
+	;mov	al, 00010101b
+	mov	al, 00010001b
 	out	020h, al
 	call	io_delay
 
@@ -518,8 +515,8 @@ SetRealMode8259A:
 	out	021h, al
 	call	io_delay
 
-	mov	al, [fs:SavedIMREG]
-	out	021h, al
+;	mov	al, [fs:SavedIMREG]
+;	out	021h, al
 	call	io_delay
 
 	ret
