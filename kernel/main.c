@@ -43,9 +43,9 @@ void kernel_main()
 
 	
 	/* 设置优先级 */
-	proc_table[0].ticks = proc_table[0].priority = 150;
-	proc_table[1].ticks = proc_table[1].priority = 50;
-	proc_table[2].ticks = proc_table[2].priority = 30;
+	proc_table[0].ticks = proc_table[0].priority = 15;
+	proc_table[1].ticks = proc_table[1].priority = 5;
+	proc_table[2].ticks = proc_table[2].priority = 3;
 
 
 
@@ -106,7 +106,7 @@ void TestA()
 		disp_color_str(" A", 0x0c);
 //		disp_int(proc_table[0].ticks);
 
-		milli_delay(200);
+		milli_delay(10);
 	}
 }
 
@@ -120,7 +120,7 @@ void TestB()
 		disp_color_str(" B", 0x0E);
 //		disp_int(proc_table[1].ticks);
 	
-		milli_delay(200);
+		milli_delay(10);
 	}
 }
 
@@ -134,7 +134,7 @@ void TestC()
 		disp_color_str(" C", 0x0A);
 //		disp_int(proc_table[2].ticks);
 
-		milli_delay(200);
+		milli_delay(10);
 	}
 }
 

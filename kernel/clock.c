@@ -16,15 +16,14 @@ void schedule()
 		{
 			if (greatest_ticks	< p->ticks)
 			{
-			DispString("<");
-			disp_int(p->ticks);
-			DispString(">");
+//			DispString("<");
+//			disp_int(p->ticks);
+//			DispString(">");
 				greatest_ticks	= p->ticks;
 				p_proc_ready	= p;
 			}
 		}
-		
-		/*
+
 		if (!greatest_ticks)
 		{
 			for (p = proc_table; p < proc_table + NR_TASKS; p++)
@@ -32,10 +31,7 @@ void schedule()
 				 p->ticks = p->priority;				
 			}
 		}
-		*/
-	}
-
-	
+	}	
 }
 
 
@@ -49,6 +45,12 @@ void clock_handler(u32 vector_no)
 	{
 		return;
 	}
+
+	if (p_proc_ready->ticks > 0)
+	{
+		return;
+	}
+	
 
 	schedule();
 }
