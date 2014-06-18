@@ -41,9 +41,18 @@ void kernel_main()
 		p_proc->regs.eflags = 0x1202;					/* IOPL 1, IF 1, 第1bit总为1 ，开始没注意这个，以至于时钟中断被屏蔽了*/
 	}
 
+	
+	/* 设置优先级 */
+	proc_table[0].ticks = proc_table[0].priority = 150;
+	proc_table[1].ticks = proc_table[1].priority = 50;
+	proc_table[2].ticks = proc_table[2].priority = 30;
+
+
+
+
+
 
 	k_reenter = 0;									/* 从 实验h 开始，初值为 0 */
-
 	p_proc_ready = proc_table;
 
 
@@ -56,7 +65,21 @@ void kernel_main()
 	disp_pos = 0;
 
 
+
+	/* 初始化PIT */
+	out_byte(TIMER_MODE, RATE_GENERATOR);			/* port: 0x43  value: 00110100 */
+	out_byte(TIMER0, (u8)(TIMER_FREQ/HZ));			/* port: 0x40  低字节 */
+	out_byte(TIMER0, (u8)((TIMER_FREQ/HZ) >> 8));	/* port: 0x40  高字节 */
+
+	put_irq_handler(CLOCK_IRQ, clock_handler);
+	enable_irq(CLOCK_IRQ);
+
 	restart();
+
+	while (1)
+	{
+		disp_int(8);
+	}
 }
 
 
@@ -79,11 +102,11 @@ void TestA()
 	int i = 0;
 	
 	while (1)
-	{
-		disp_int(get_ticks());
-		disp_color_str("A ", 0x0c);
+	{		
+		disp_color_str(" A", 0x0c);
+//		disp_int(proc_table[0].ticks);
 
-		milli_delay(300);
+		milli_delay(200);
 	}
 }
 
@@ -94,10 +117,10 @@ void TestB()
 	
 	while (1)
 	{
-		disp_int(get_ticks());
-		disp_color_str("B ", 0x0E);
-
-		milli_delay(900);
+		disp_color_str(" B", 0x0E);
+//		disp_int(proc_table[1].ticks);
+	
+		milli_delay(200);
 	}
 }
 
@@ -107,11 +130,11 @@ void TestC()
 	int i = 0x2000;
 	
 	while (1)
-	{
-		disp_int(get_ticks());
-		disp_color_str("C ", 0x0A);
+	{		
+		disp_color_str(" C", 0x0A);
+//		disp_int(proc_table[2].ticks);
 
-		milli_delay(1500);
+		milli_delay(200);
 	}
 }
 

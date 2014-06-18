@@ -94,6 +94,8 @@ typedef	struct s_proc
 	STACK_FRAME regs;
 	u16	proc_selector;	
 	DESCRIPTOR	ldts[2];
+	int	ticks;
+	int	priority;
 } PROCESS;
 
 
