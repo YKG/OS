@@ -67,5 +67,7 @@ void TestD();
 
 u32 sys_get_ticks();
 u32 get_ticks();
+void milli_delay(u32 milli_sec);
+
 
 #endif

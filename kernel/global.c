@@ -17,5 +17,5 @@ TASK				task_table[TASK_SIZE] = {
 					{(u32)TestD, 0x8000}
 					};
 
-u32					NR_TASKS	= 4;
-//NR_TASKS
+u32					NR_TASKS	= 1;
+

@@ -20,6 +20,14 @@ void Init8259A()
 	out_byte(PORT_M_OCW1, 0xFF);	/* 11111111b  全部屏蔽 */
 	out_byte(PORT_S_OCW1, 0xFF);	/* 11111111b  全部屏蔽   */
 
+	
+	/* 初始化PIT */
+	out_byte(TIMER_MODE, RATE_GENERATOR);			/* port: 0x43  value: 00110100 */
+	out_byte(TIMER0, (u8)(TIMER_FREQ/HZ));			/* port: 0x40  低字节 */
+	out_byte(TIMER0, (u8)((TIMER_FREQ/HZ) >> 8));	/* port: 0x40  高字节 */
+
+
+
 
 	for (i = 0; i < NR_IRQ; i++)
 	{
@@ -60,30 +68,4 @@ void put_irq_handler(u32 irq, void (* handler)(u32 irq))
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-//void Init8259A()
-//{
-//		out_byte(PORT_M_ICW1, 0x011);
-//		out_byte(PORT_S_ICW1, 0x011);
-//		out_byte(PORT_M_ICW2, 0x020);
-//		out_byte(PORT_S_ICW2, 0x028);
-//		out_byte(PORT_M_ICW3, 0x004);
-//		out_byte(PORT_S_ICW3, 0x002);
-//		out_byte(PORT_M_ICW4, 0x001);
-//		out_byte(PORT_S_ICW4, 0x001);
-//	
-//		out_byte(PORT_M_OCW1, 0xFE);	/* 11111110b  开时钟中断 */
-//		out_byte(PORT_S_OCW1, 0xFF);	/* 11111111b  全部屏蔽   */
-//
-//}
 

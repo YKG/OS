@@ -58,6 +58,13 @@
 	#define	PORT_M_OCW1		0x021
 	#define	PORT_S_OCW1		0x0A1
 
+	/* 时钟 定时器 */
+	#define	TIMER_MODE		0x43
+	#define	RATE_GENERATOR	0x34		/* 00110100b */
+	#define	TIMER0			0x40
+	#define	TIMER_FREQ		1193182L	/* 输入频率 */
+	#define	HZ				100			/* 每10ms产生一次中断, 每秒 100 ticks */
+	
 
 	#define	CLOCK_IRQ		0
 

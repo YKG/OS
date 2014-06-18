@@ -9,21 +9,9 @@ void kernel_main()
 {
 	u32 i;
 
-
 	PROCESS		* p_proc;
 	u16			* p_selector;
 	u32			  task_stack_top;
-//	TASK		* p_task;
-//	TASK		tasks[] = {
-//					{(u32)TestA, 0x8000},
-//					{(u32)TestB, 0x8000},
-//					{(u32)TestC, 0x8000},
-////					{(u32)TestD, 0x8000},
-//					{0, 0}
-//				};
-
-
-
 
 	ticks = 0;
 	disp_pos = (80*15 + 0)*2;
@@ -32,28 +20,6 @@ void kernel_main()
 
 	task_stack_top	= (u32)task_stack + TASK_STACK_SIZE;
 	tss.ss0			= SelectorFlatRW;
-
-//	p_task			= task_table;
-//	n_tasks			= 0;
-//	for (; tasks[n_tasks].initial_eip && tasks[n_tasks].stack_size; p_task++, n_tasks++)
-//	{
-//		p_task->initial_eip = tasks[n_tasks].initial_eip;
-//		p_task->stack_size  = tasks[n_tasks].stack_size;
-//	}
-//	n_tasks			= 3;
-		
-//	for (i = 0; i < n_tasks; i++)	
-////	disp_int(NR_TASKS);	
-//	for (i = 0; i < NR_TASKS; i++)
-//	{
-//		disp_int(i);
-//		disp_color_str("  ", 0x0c);
-//		disp_int(task_table[i].initial_eip);
-//		disp_color_str("  ", 0x0c);
-//		disp_int(task_table[i].stack_size);
-//	}
-
-
 	for (i = 0; i < NR_TASKS; i++)
 	{
 		p_proc = &proc_table[i];
@@ -80,14 +46,17 @@ void kernel_main()
 
 	p_proc_ready = proc_table;
 
+
+	/* 清屏 */
+	disp_pos = 0;
+	for (i = 0; i < (80 * 25); i++)
+	{
+		disp_color_str(" ", 0x07);
+	}
+	disp_pos = 0;
+
+
 	restart();
-
-	
-
-//	while (1)
-//	{
-//	}
-
 }
 
 
@@ -100,7 +69,7 @@ void delay()
 	int j, k;
 	
 
-	for (j = 0; j < 8; j++)
+	for (j = 0; j < 80; j++)
 	{
 		for (k = 0; k < 10000; k++)
 		{
@@ -118,7 +87,8 @@ void TestA()
 		disp_int(get_ticks());
 		disp_color_str("A ", 0x0c);
 
-		delay();
+//		delay();
+		milli_delay(1000);
 	}
 }
 
@@ -129,7 +99,7 @@ void TestB()
 	
 	while (1)
 	{
-		disp_color_str("B", 0x0c);
+		disp_color_str("B", 0x0B);
 //		DispInt(i++);
 
 		delay();
@@ -143,7 +113,7 @@ void TestC()
 	
 	while (1)
 	{
-		disp_color_str("C", 0x0c);
+		disp_color_str("C", 0x0B);
 //		DispInt(i++);
 
 		delay();
@@ -157,7 +127,7 @@ void TestD()
 	
 	while (1)
 	{
-		disp_color_str("D", 0x0c);
+		disp_color_str("D", 0x0B);
 //		DispInt(i++);
 
 		delay();
