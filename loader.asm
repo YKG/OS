@@ -405,9 +405,9 @@ RootFirstSectorNo	equ	19	; 根目录第一扇区号
 
 
 LoaderName:		db	'KERNEL  BIN'
-LoaderFound:		db	'Kernel Loading', 0
+LoaderFound:		db	'L: Kernel Loading', 0
 LoaderNoLoader:		db	'NO KERNEL', 0
-LoaderReady		db	'Ready.', 0
+LoaderReady		db	'L: Ready.', 0
 bSectorsToRead:		db	0
 bRootSectorNum:		db	14
 bIndexForRootSectorLoop:db	0

@@ -329,6 +329,7 @@ GetFATEntry:
 	mov	byte [bSectorsToRead], 2 ; 读2个扇区
 	call	ReadSector
 
+
 	pop	ax
 	mov	di, ax
 	mov	word ax, [es:bx + di]
@@ -391,9 +392,9 @@ RootFirstSectorNo	equ	19	; 根目录第一扇区号
 
 
 LoaderName:		db	'LOADER  BIN'
-LoaderFound:		db	'Loading', 0
+LoaderFound:		db	'Booting', 0
 LoaderNoLoader:		db	0;'NO LOADER', 0
-LoaderReady		db	'Ready.', 0
+LoaderReady		db	'BReady.', 0
 bSectorsToRead:		db	0
 bRootSectorNum:		db	14
 bIndexForRootSectorLoop:db	0
