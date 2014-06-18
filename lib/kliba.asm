@@ -12,6 +12,7 @@ extern	disp_pos
 global	DispString
 global	disp_color_str
 global	DispInt
+global	disp_int
 global	out_byte
 global	in_byte
 global	disable_irq
@@ -206,18 +207,19 @@ disp_color_str:
 
 
 
-;==== DispInt ================================
-; DispInt(int i)
+;==== disp_int ==============================
+; disp_int(int i)				; 不打印前导0
 ;=========================================
-DispInt:
+disp_int:
 	push	eax
 	push	ebx
 	push	ecx
+	push	edx				; dl 用来标识整数前导0，0表示还没有输出
 	push	esi
 	push	edi
 	
 
-	mov	dword esi, [esp + 20 + 4]	; 记得 eip！
+	mov	dword esi, [esp + 24 + 4]	; 记得 eip！
 	mov	dword edi, [disp_pos]
 
 	mov	ah, 0Bh				; 青色	
@@ -227,13 +229,13 @@ DispInt:
 	mov	al, 'x'
 	mov	[gs:edi], ax
 	add	edi, 2
-
-
+	
+	xor	edx, edx
 	mov	ch, 8				; 8 = 32/4, 一个字符包含 4bit
 	mov	cl, 32				
 .next4bit:
 	test	ch, ch
-	jz	.DispIntComplete
+	jz	.dispIntComplete
 	mov	ebx, esi
 	sub	cl, 4
 	shr	ebx, cl				; 移位操作只能使用cl寄存器或立即数
@@ -241,29 +243,41 @@ DispInt:
 	mov	al, bl
 	add	al, '0'
 	cmp	bl, 10
-	jb	.LowerThan10
+	jb	.lowerThan10
 	mov	al, bl
 	sub	al, 10
 	add	al, 'A'
-.LowerThan10:
+.lowerThan10:
+	cmp	ch, 1
+	je	.printdigit
+	cmp	al, '0'
+	jne	.printdigit
+	test	dl, dl
+	jz	.leading0
+.printdigit:
 	mov	[gs:edi], ax
 	add	edi, 2
+	inc	dl
+.leading0:	
 	dec	ch
 	jmp	.next4bit
 
 
-.DispIntComplete:
+.dispIntComplete:
 	mov	dword [disp_pos], edi
 
 	pop	edi
 	pop	esi
+	pop	edx
 	pop	ecx
 	pop	ebx
 	pop	eax
 
 	ret
 
-;==== DispInt End ============================
+;==== disp_int End ==========================
+
+
 
 
 
@@ -305,4 +319,78 @@ io_delay:
 	nop
 	ret
 ;==== io_delay End ===========================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;==== DispInt ================================
+; DispInt(int i)
+;=========================================
+DispInt:
+	push	eax
+	push	ebx
+	push	ecx
+	push	esi
+	push	edi
+	
+
+	mov	dword esi, [esp + 20 + 4]	; 记得 eip！
+	mov	dword edi, [disp_pos]
+
+	mov	ah, 0Bh				; 青色	
+	mov	al, '0'
+	mov	[gs:edi], ax
+	add	edi, 2
+	mov	al, 'x'
+	mov	[gs:edi], ax
+	add	edi, 2
+
+
+	mov	ch, 8				; 8 = 32/4, 一个字符包含 4bit
+	mov	cl, 32				
+.Next4bit:
+	test	ch, ch
+	jz	.DispIntComplete
+	mov	ebx, esi
+	sub	cl, 4
+	shr	ebx, cl				; 移位操作只能使用cl寄存器或立即数
+	and	bl, 00Fh
+	mov	al, bl
+	add	al, '0'
+	cmp	bl, 10
+	jb	.LowerThan10
+	mov	al, bl
+	sub	al, 10
+	add	al, 'A'
+.LowerThan10:
+	mov	[gs:edi], ax
+	add	edi, 2
+	dec	ch
+	jmp	.Next4bit
+
+
+.DispIntComplete:
+	mov	dword [disp_pos], edi
+
+	pop	edi
+	pop	esi
+	pop	ecx
+	pop	ebx
+	pop	eax
+
+	ret
+
+;==== DispInt End ============================
 

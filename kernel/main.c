@@ -22,7 +22,7 @@ void kernel_main()
 //					{(u32)TestD, 0x8000},
 					{0, 0}
 				};
-
+	ticks = 0;
 
 
 
@@ -103,8 +103,9 @@ void TestA()
 	
 	while (1)
 	{
-		get_ticks();
-		disp_color_str("A", 0x0c);
+		disp_int(get_ticks());
+//		DispInt(get_ticks());
+		disp_color_str("A ", 0x0c);
 //		DispInt(i++);
 
 		delay();

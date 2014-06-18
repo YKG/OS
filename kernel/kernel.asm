@@ -400,12 +400,11 @@ xchg	bx, bx
 	call	save		; 下一条语句的 地址(EIP) 入栈
 	
 ;	mov	al, EOI		; 发送EOI
-;	out	INT_M_CTL, al
-;	mov	ebx, sys_call_table
-;	mov	ebx, [sys_call_table + 4]
+;	out	INT_M_CTL, al	; 为什么它不用发呢？
+
 	sti
-	call	[(4 * eax) + sys_call_table]
-;	mov	[esp + (4 + 8 - 1)*4], eax	; 放到 进程表 的 regs.eax 中, 这句不对！ 2011-7-9 14:15:01
+	call	[sys_call_table + (4 * eax)]
+;	mov	ebx, [p_proc_ready]		; 这样应该不对，可能发生进程切换，这样就赋错了, 应该直接用 ebx
 	mov	[ebx + (4 + 8 - 1)*4], eax	; 放到 进程表 的 regs.eax 中
 	cli
 

@@ -4,6 +4,7 @@
 void DispString(char *str);
 void disp_color_str(char *str, u8 color);
 void DispInt(u32 i);
+void disp_int(u32 i);
 
 void init_descriptor(DESCRIPTOR *desc, u32 base, u32 limit, u16 attr);
 void Init_IDT_DESC(u8 vec_no, u8 type, void * handler, u8 privilege);
@@ -64,7 +65,7 @@ void TestB();
 void TestC();
 void TestD();
 
-void sys_get_ticks();
-void get_ticks();
+u32 sys_get_ticks();
+u32 get_ticks();
 
 #endif

@@ -81,12 +81,6 @@ void Init_IDT()
 
 
 
-void sys_get_ticks()
-{
-	disp_color_str("+", 0x0B);
-}
-
-
 
 
 
