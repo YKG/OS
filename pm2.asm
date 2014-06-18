@@ -101,12 +101,12 @@ int	21h
 ;ALIGN 32
 [BITS 16]
 LABEL_SEG_CODE16:
-mov	ax, SelectorNormal
-mov	ds, ax
-mov	es, ax
-mov	ss, ax
-mov	gs, ax
-mov	fs, ax
+;mov	ax, SelectorNormal
+;mov	ds, ax
+;mov	es, ax
+;mov	ss, ax
+;mov	gs, ax
+;mov	fs, ax
 
 mov	eax, cr0
 and	al, 11111110b
@@ -118,8 +118,23 @@ mov	cr0, eax
 ;mov	edi, 02eh
 ;mov	al, [cs:edi]
 
+mov	ax, 3224h
+mov	ds, ax
+mov	es, ax
+mov	ss, ax
+
+mov	sp, [SP_IN_REAL_MODE]
+
+in	al, 92h
+and	al, 11111101b
+out	92h, al
+
+sti
+mov	ax, 4c00h
+int	21h
 
 LABEL_GO_BACK_TO_REAL:
+;mov	ax, 0
 jmp	0:LABEL_REAL_ENTRY
 
 Code16Len	equ $ - $$
