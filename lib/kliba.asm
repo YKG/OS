@@ -3,6 +3,9 @@ extern	disp_pos
 [section .text]
 global	DispString
 global	DispInt
+global	out_byte
+global	in_byte
+
 
 
 
@@ -125,4 +128,41 @@ DispInt:
 
 
 
+
+
+;==== out_byte ===============================
+; out_byte(u16 port, u8 value)
+;============================
+out_byte:
+	mov	edx, [esp + 4]
+	mov	byte al, [esp + 4 + 4]
+	out	dx, al
+	call	io_delay
+	ret
+;==== out_byte End ===========================
+
+
+
+;==== in_byte ================================
+; in_byte(u16 port)  al = value;
+;=============================
+in_byte:
+	mov	edx, [esp + 4]
+	in	al, dx
+	call	io_delay
+	ret
+;==== in_byte End ============================
+
+
+
+;==== io_delay ===============================
+; io_delay(int i)
+;=========================================
+io_delay:
+	nop
+	nop
+	nop
+	nop
+	ret
+;==== io_delay End ===========================
 

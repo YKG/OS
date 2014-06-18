@@ -1,42 +1,8 @@
-%include "pm.inc"
-
+%include "pm.inc.asm"
 
 org  0100h			; 0x9000:0x100
 
-		
-	
-;=============================================================================================
-; FAT12 文件头
-;=============================================================================================	
-	jmp  LABEL_START		; Start to boot.
-	nop				; 这个 nop 不可少
-
-	; 下面是 FAT12 磁盘的头
-	BS_OEMName	DB 'ForrestY'	; OEM String, 必须 8 个字节
-	BPB_BytsPerSec	DW 512		; 每扇区字节数
-	BPB_SecPerClus	DB 1		; 每簇多少扇区
-	BPB_RsvdSecCnt	DW 1		; Boot 记录占用多少扇区
-	BPB_NumFATs	DB 2		; 共有多少 FAT 表
-	BPB_RootEntCnt	DW 224		; 根目录文件数最大值
-	BPB_TotSec16	DW 2880		; 逻辑扇区总数
-	BPB_Media	DB 0xF0		; 媒体描述符
-	BPB_FATSz16	DW 9		; 每FAT扇区数
-	BPB_SecPerTrk	DW 18		; 每磁道扇区数
-	BPB_NumHeads	DW 2		; 磁头数(面数)
-	BPB_HiddSec	DD 0		; 隐藏扇区数
-	BPB_TotSec32	DD 0		; 如果 wTotalSectorCount 是 0 由这个值记录扇区数
-	BS_DrvNum	DB 0		; 中断 13 的驱动器号
-	BS_Reserved1	DB 0		; 未使用
-	BS_BootSig	DB 29h		; 扩展引导标记 (29h)
-	BS_VolID	DD 0		; 卷序列号
-	BS_VolLab	DB 'OrangeS0.02'; 卷标, 必须 11 个字节
-	BS_FileSysType	DB 'FAT12   '	; 文件系统类型, 必须 8个字节  
-;=============================================================================================
-
-
-
-
-
+%include "fat12hdr.inc.asm"
 
 
 ;=============================================================================================
@@ -50,19 +16,15 @@ LABEL_GDT:
 	VIDEO_DESC:	Descriptor	0b8000h, 0ffffh, DA_DRW
 
 
-
 	GdtLen	equ	$ - $$
 	GdtPtr	dw	GdtLen - 1
-		dd	090000h + LABEL_GDT
+		dd	LoaderPhyBaseAddr + LABEL_GDT
 
-	SelectorFlatC	equ	FlatC_DESC - GDT_DESC
-	SelectorFlatRW	equ	FlatRW_DESC - GDT_DESC
-	SelectorVideo	equ	VIDEO_DESC - GDT_DESC
+	SelectorFlatC	equ	FlatC_DESC	- GDT_DESC
+	SelectorFlatRW	equ	FlatRW_DESC	- GDT_DESC
+	SelectorVideo	equ	VIDEO_DESC	- GDT_DESC
 
 ;=============================================================================================
-
-
-
 
 
 
@@ -79,7 +41,9 @@ LABEL_START:
 	mov	ds, ax
 	mov	ss, ax
 	mov	sp, TopOfStack
-
+	mov	ax, 0b800h
+	mov	gs, ax
+	
 
 ;-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ; 下面是寻找并加载 KERNEL 到 KernelSeg:KernelOffset
@@ -132,7 +96,7 @@ LABEL_NOT_FOUND:
 	mov	ds, ax
 	mov	si, KernelNoKernel
 	mov	di, (80*4 + 0)*2
-	call	DispString
+	call	DispStringInRealMode
 	jmp	$	
 
 LABEL_FOUND:
@@ -142,7 +106,7 @@ LABEL_FOUND:
 	mov	ds, ax
 	mov	si, KernelFound
 	mov	di, (80*4 + 0)*2
-	call	DispString
+	call	DispStringInRealMode
 	mov	si, di		; 保存下一个字符位置到si 
 	pop	di
 
@@ -185,7 +149,7 @@ LABEL_KERNEL_LOADED:
 	mov	ds, ax
 	mov	si, KernelReady
 	mov	di, (80*5 + 0)*2
-	call	DispString
+	call	DispStringInRealMode
 	mov	si, di				; 保存下一个字符位置到si
 	pop	di
 
@@ -223,7 +187,7 @@ memChk:
 		
 
 memChkFaild:
-		mov	dword	[_dwMemBlockCount], 0
+	mov	dword	[_dwMemBlockCount], 0
 memChkOK:
 
 ; 已获取可用内存 -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -241,27 +205,11 @@ memChkOK:
 
 
 ;-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-; 设置GDT, IDT，准备跳入保护模式
+; 设置GDT，打开20号地址线，置PE位，准备跳入保护模式
 ;-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-;	; 加载GDT
-;	xor	eax, eax
-;	mov	ax, cs
-;	shl	eax, 4
-;	add	eax, LABEL_GDT
-;	mov	dword	[GdtPtr + 2], eax
-xchg	bx, bx
 	lgdt	[GdtPtr]
-
-;	; 加载IDT
-;	xor	eax, eax
-;	mov	ax, cs
-;	shl	eax, 4
-;	add	eax, LABEL_IDT
-;	mov	dword	[IdtPtr + 2], eax
-
 	cli
-;	lidt	[IdtPtr]
 
 	; 打开A20
 	in	al, 92h
@@ -274,24 +222,9 @@ xchg	bx, bx
 	mov	cr0, eax
 
 	; 进入保护模式
-;	jmp	dword	SelectorCode32:0
-xchg	bx, bx
-	jmp	dword	SelectorFlatC : LABEL_SEG_CODE32 + 090000h
-
-
-
-
-;#############################################################
-;#############################################################
-;####### 神圣的一跳！ ########################################
-;#############################################################
-;	jmp	KernelSeg:KernelOffset
-;xchg bx,bx
-;	jmp	KernelSeg:0400h
-;#############################################################
-;#############################################################
-;#############################################################
-;#############################################################
+	jmp	dword	SelectorFlatC : LoaderPhyBaseAddr + LABEL_SEG_CODE32
+; 16bit 代码段结束 -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+;-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 
 
@@ -363,14 +296,11 @@ ReadSector:
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; DispString
+; DispStringInRealMode
 ;	参数：	ds:si 指向待显示字符串，字符串以0结束 
 ;		di    gs:di 为待显示字符串首地址
 ;====================================================
-DispString:
-	mov	ax, 0b800h
-	mov	gs, ax
-	
+DispStringInRealMode:
 	mov	ah, 0ch
 .disp_str_go_on:
 	mov	byte al, [ds:si]
@@ -473,40 +403,19 @@ cls:
 
 
 
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 准备跳入PM前用到一些变量
-;==============================================
-
-	PageDirBase		equ	100000h
-	PageTblBase		equ	101000h
-	KernelSeg		equ	08000h
-	KernelOffset		equ	0000h	
-	KernelPhyBaseAddress	equ	KernelSeg * 010h + KernelOffset
-	ReLoadKernelPhyBaseAddr	equ	030400h
-	RootFirstSectorNo	equ	19	; 根目录第一扇区号
-
-
-	KernelName:		db	'KERNEL  BIN'
-	KernelFound:		db	'Kernel Loading', 0
-	KernelNoKernel:		db	'NO KERNEL', 0
-	KernelReady		db	'Ready.', 0
-	bSectorsToRead:		db	0
-	bRootSectorNum:		db	14	; 根目录大小(14个扇区)
-	bIndexForRootSectorLoop:db	0
-	wSectorNoForRead:	dw	RootFirstSectorNo
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-
-
-
-
-
-
-
-
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+;
+; 上面部分都是 16 位代码段，从此往下开始进入保护模式
+;
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
 
 
@@ -521,435 +430,42 @@ LABEL_SEG_CODE32:
 	mov	es, ax
 	mov	fs, ax
 	mov	ss, ax
-	mov	esp, TopOfStack + 090000h
+	mov	esp, LoaderPhyBaseAddr + TopOfStack
 	mov	ax, SelectorVideo
 	mov	gs, ax
 
-	
 
-	
 	; 打印一些字符串和内存信息
-	call	DispReturn
-	call	DispReturn
-	call	DispReturn
-	call	DispReturn
-	call	DispReturn
-	call	DispReturn
+	mov	dword [dwDispPos], (80*6 + 0)*2
 	push	szPMMessage
 	call	DispStr
 	add	esp, 4
-	call	DispReturn
-
-	push	012345678h
-	call	DispInt
-	add	esp, 4
-
-
-	call	DispReturn
-	call	DispReturn
-
-
 	push	szTitle
 	call	DispStr
 	add	esp, 4
 	call	DispMemSize
-
-
-	call	DispReturn
 	push	szRAMSize
 	call	DispStr
 	add	esp, 4
-	push	dword	[_dwRAMSize+ 090000h]
+	push	dword	[dwRAMSize]
 	call	DispInt
 	add	esp, 4
 
-;
-;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	;放置Foo的代码到BaseFoo(0x401000)处
-;	mov	ax, SelectorFlatRW
-;	mov	es, ax
-;	mov	esi, BaseFoo
-;	mov	ax, SelectorCode32;cs
-;	mov	ds, ax
-;	mov	edi, LABEL_Foo - $$
-;	mov	cx, Foo_Len
-;	.cpyfoo:
-;		mov	byte	al, [ds:edi]
-;		mov	byte	[es:esi], al
-;		inc	edi
-;		inc	esi
-;	loop	.cpyfoo
-;
-;	;-------------------------------------
-;	;放置Bar的代码到BaseBar(0x501000)处
-;	mov	ax, SelectorFlatRW
-;	mov	es, ax
-;	mov	esi, BaseBar
-;	mov	ax, cs
-;	mov	ds, ax
-;	mov	edi, LABEL_Bar - $$
-;	mov	cx, Bar_Len
-;	.cpybar:
-;		mov	byte	al, [ds:edi]
-;		mov	byte	[es:esi], al
-;		inc	edi
-;		inc	esi
-;	loop	.cpybar
-;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-
-	; 页表切换实验
+	; 分页
 	call	SetupPaging
-;	call	SelectorFlatC:BaseDemo
-;	call	PSwitch
-;	call	SelectorFlatC:BaseDemo
-
-
-	; 中断实验
-;	call	Init8259A
-;	int	7fh
-;	int	80h
-;	sti
-
-
-
-;	mov	ax, SelectorFlatRW
-;	mov	ds, ax
-;	mov	es, ax
-;	mov	ss, ax
-;	mov	fs, ax
-;
 
 	; 重新放置 KERNEL
 	call	InitKernel
 
-	
 	; 进入 KERNEL.BIN
 	jmp	SelectorFlatC:ReLoadKernelPhyBaseAddr
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 ;+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-; 以下都是函数
+; 以下都是函数(DispMemSize, SetupPaging, InitKernel)
 ;+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-
-
-	;==== InitKernel =============================
-	; 将 Kernel 放到新的位置
-	;========================
-	InitKernel:
-		push	eax
-		push	ecx
-		push	edx
-		push	edi
-		push	esi
-		push	ds
-		
-		
-		mov	ax, SelectorFlatRW
-		mov	ds, ax
-		mov	edi, KernelPhyBaseAddress
-		mov	word cx, [ds:edi + 02ch]	; Program Header 个数
-;;;;;;;;;;;;;;;;;;;
-;mov	cx, 1
-; 待处理%%%%%严重错误！！！
-;;;;;;;;;;;;;;;;;;;
-		mov	dword eax, [ds:edi + 01ch]	; 第一个Program Header 相对于文件头的偏移
-		add	eax, KernelPhyBaseAddress
-		mov	esi, eax			; ds:esi 指向Program Header 内存单元
-		
-	KernelCopyLoop:
-		test	ecx, ecx
-		jz	KernelCopyComplete	
-
-		mov	dword eax, [ds:esi]		; 检查类型
-		test	eax, eax
-		jz	OneProgramHeaderComplete	
-
-		mov	dword edx, [ds:esi + 16]	; size
-		push	edx
-		mov	dword edx, [ds:esi + 4]		; 源地址
-		add	edx, KernelSeg * 010h + KernelOffset
-		push	edx
-		mov	dword edx, [ds:esi + 8]		; 目标地址
-		push	edx
-		call	MemCopy
-		add	esp, 12
-
-	OneProgramHeaderComplete:
-		add	esi, 0x20
-		dec	cx
-		jmp	KernelCopyLoop
-
-	
-	KernelCopyComplete:
-		pop	ds
-		pop	esi
-		pop	edi
-		pop	edx
-		pop	ecx
-		pop	eax
-
-		ret
-	;==== InitKernel End =========================
-		
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	;==== MemCopy ================================
-	; MemCopy(char *dest, char *src, int size)
-	;=========================================
-	MemCopy:
-		push	edi
-		push	esi
-		push	ecx
-		push	eax
-		
-		mov	edi, [esp + 16 + 4]	; 目的地址，因为栈中还有个 eip
-		mov	esi, [esp + 24]		; 源地址
-		mov	ecx, [esp + 28]		; 长度
-	.nextbyte:
-		test	ecx, ecx
-		jz	.CopyComplete
-		mov	ax, SelectorFlatRW
-		mov	ds, ax
-		mov	al, [ds:esi]
-		mov	[ds:edi], al
-		inc	esi
-		inc	edi
-		dec	ecx
-		jmp	.nextbyte
-
-	.CopyComplete:
-		pop	eax
-		pop	ecx
-		pop	esi
-		pop	edi
-
-		ret
-	;==== MemCopy End ============================
-
-
-
-
-
-
-
-
-
-;
-;	;==== ClockHandler ===========================
-;	_ClockHandler:
-;	ClockHandler	equ	_ClockHandler - $$
-;		inc	byte	[gs:(80*3 + 75)*2]
-;		mov	al, 20h
-;		out	20h, al
-;		iretd
-;
-;	;==== ClockHandler End========================
-;
-;
-;
-;	;==== UserIntHandler =========================
-;	_UserIntHandler:
-;	UserIntHandler	equ	_UserIntHandler - $$
-;		mov	ah, 0ch
-;		mov	al, 'I'
-;		mov	[gs:(80*3 + 75)*2], ax
-;		;jmp	$
-;		iretd
-;
-;	;==== UserIntHandler End =====================
-;
-;
-;
-;	;==== SpuriousHandler ========================
-;	_SpuriousHandler:
-;	SpuriousHandler	equ	_SpuriousHandler - $$
-;		mov	ah, 0ch
-;		mov	al, '!'
-;		mov	[gs:(80*4 + 75)*2], ax
-;		;jmp	$
-;		iretd
-;
-;	;==== SpuriousHandler End ====================
-;
-;
-;
-;
-;	;==== SetRealMode8259A =======================
-;	SetRealMode8259A:
-;		mov	ax, SelectorData
-;		mov	fs, ax
-;		
-;		mov	al, 00010101b
-;		out	020h, al
-;		call	io_delay
-;
-;		mov	al, 008h
-;		out	021h, al
-;		call	io_delay
-;
-;		mov	al, 004h
-;		out	021h, al
-;		call	io_delay
-;
-;		mov	al, 001h
-;		out	021h, al
-;		call	io_delay
-;
-;		mov	al, [fs:SavedIMREG]
-;		out	021h, al
-;		call	io_delay
-;
-;		ret
-;	;==== SetRealMode8259A End ===================
-;
-;
-;
-;
-;	;==== Init8259A ==============================
-;	Init8259A:
-;		mov	al, 011h
-;		out	020h, al
-;		call	io_delay
-;
-;		out	0a0h, al
-;		call	io_delay
-;
-;
-;		mov	al, 020h
-;		out	021h, al
-;		call	io_delay
-;
-;		mov	al, 028h
-;		out	0a1h, al
-;		call	io_delay
-;
-;
-;		mov	al, 004h
-;		out	021h, al
-;		call	io_delay
-;
-;		mov	al, 002h
-;		out	0a1h, al
-;		call	io_delay
-;
-;
-;		mov	al, 001h
-;		out	021h, al
-;		call	io_delay
-;
-;		out	0a1h, al
-;		call	io_delay
-;
-;		; - - - - - - - -
-;		mov	al, 11111110b
-;		out	021h, al
-;		call	io_delay
-;
-;		mov	al, 11111111b
-;		out	0a1h, al
-;		call	io_delay
-;
-;		ret
-;
-;		;---------------
-;		io_delay:
-;			nop
-;			nop
-;			nop
-;			nop
-;		ret
-;	;==== Init8259A  End =========================
-;
-;
-;
-;
-;	;==== Foo ====================================
-;	LABEL_Foo:
-;		mov	ax, SelectorVideo
-;		mov	gs, ax
-;
-;		mov	edi, (80*20 + 0)*2
-;		mov	ah, 0ch
-;		mov	al, 'F'
-;		mov	[gs:edi], ax
-;
-;		mov	edi, (80*20 + 1)*2
-;		mov	ah, 0ch
-;		mov	al, 'o'
-;		mov	[gs:edi], ax
-;
-;		mov	edi, (80*20 + 2)*2
-;		mov	ah, 0ch
-;		mov	al, 'o'
-;		mov	[gs:edi], ax
-;
-;		retf
-;	Foo_Len		equ	$ - LABEL_Foo
-;	;==== Foo End =================================
-;
-;
-;
-;
-;	;==== Bar =====================================
-;	LABEL_Bar:
-;		mov	ax, SelectorVideo
-;		mov	gs, ax
-;
-;		mov	edi, (80*21 + 0)*2
-;		mov	ah, 0ch
-;		mov	al, 'B'
-;		mov	[gs:edi], ax
-;
-;		mov	edi, (80*21 + 1)*2
-;		mov	ah, 0ch
-;		mov	al, 'a'
-;		mov	[gs:edi], ax
-;
-;		mov	edi, (80*21 + 2)*2
-;		mov	ah, 0ch
-;		mov	al, 'r'
-;		mov	[gs:edi], ax
-;
-;		retf
-;	Bar_Len		equ	$ - LABEL_Bar
-;	;==== Bar End =================================
-;
-
-
-
-
 
 
 	;==== DispMemSize =============================
@@ -998,98 +514,10 @@ LABEL_SEG_CODE32:
 
 
 
-;
-;	;==== PSwitch =================================
-;	; Page Switch
-;	PSwitch:
-;	mov	ax, SelectorData
-;	mov	ds, ax
-;	mov	es, ax
-;
-;	xor	edx, edx
-;	mov	dword eax, [dwRAMSize]
-;	mov	ebx, 400000h
-;	div	ebx
-;	mov	ecx, eax
-;	test	edx, edx
-;	jz	.no_remainder2
-;	inc	ecx
-;	.no_remainder2:
-;	push	ecx
-;
-;	mov	ax, SelectorDir2
-;	mov	es, ax
-;	mov	edi, 0
-;	xor	eax, eax
-;	mov	eax, PageTblBase2 | PG_P | PG_USU | PG_RWW
-;	sdir2:	
-;		mov	[es:edi], eax
-;		add	edi, 4
-;		add	eax, 4*1024
-;	loop	sdir2
-;
-;
-;	mov	ax, SelectorTbl2
-;	mov	es, ax
-;	mov	edi, 0
-;	pop	eax		; eax <- ecx
-;	mov	ebx, 1024
-;	mul	ebx
-;	mov	ecx, eax
-;	xor	eax, eax
-;	mov	eax, PG_P | PG_USU | PG_RWW
-;	stbl2:	
-;		mov	[es:edi], eax
-;		add	edi, 4
-;		add	eax, 4*1024
-;	loop	stbl2
-;
-;
-;
-;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	;;;;;;;;;修改页表;;;;;;;;;;;;;;;;;;;;
-;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	mov	ax, SelectorTbl2
-;	mov	es, ax
-;	mov	eax, BaseDemo
-;	shr	eax, 10		; 即 eax /= 4*1024; eax *= 4
-;	mov	edi, eax
-;	;mov	dword	eax, [es:edi]	;这句只为看看原来存的是什么
-;	mov	dword	[es:edi], BaseBar | PG_P | PG_USU | PG_RWW
-;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	;;;;;;;修改结束;;;;;;;;;;;;;;;;;;;;;;
-;	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-;
-;	mov	eax, PageDirBase2
-;	mov	cr3, eax
-;	mov	eax, cr0
-;	or	eax, 80000000h
-;	mov	cr0, eax
-;
-;	jmp	short .nop2
-;	.nop2:
-;		nop
-;	ret
-;	;==== PSwitch End =============================
-;
-
-
-
-
-
-
-
 	;==== SetupPaging =============================
 	;Start Paging...
 	SetupPaging:
-
-;		mov	ax, SelectorData
-;		mov	ds, ax
-;		mov	es, ax
-
 		xor	edx, edx
-;		mov	dword eax, [dwRAMSize]
 		mov	dword eax, [dwRAMSize]
 		mov	ebx, 400000h
 		div	ebx
@@ -1099,9 +527,7 @@ LABEL_SEG_CODE32:
 		inc	ecx
 		.no_remainder:
 		push	ecx
-;
-;		mov	ax, SelectorDir
-;		mov	es, ax
+
 		mov	edi, PageDirBase
 		xor	eax, eax
 		mov	eax, PageTblBase | PG_P | PG_USU | PG_RWW
@@ -1110,11 +536,8 @@ LABEL_SEG_CODE32:
 			add	edi, 4
 			add	eax, 4*1024
 		loop	sdir
-
-
-;		mov	ax, SelectorTbl
-;		mov	es, ax
 		mov	edi, PageTblBase
+
 		pop	eax
 		mov	ebx, 1024
 		mul	ebx
@@ -1142,13 +565,70 @@ LABEL_SEG_CODE32:
 	;==== SetupPaging End =========================
 
 
-%include "lib.inc"
+
+
+
+	;==== InitKernel =============================
+	; 将 Kernel 放到新的位置
+	;========================
+	InitKernel:
+		push	eax
+		push	ecx
+		push	edx
+		push	edi
+		push	esi
+		push	ds
+		
+		
+		mov	ax, SelectorFlatRW
+		mov	ds, ax
+		mov	edi, KernelPhyBaseAddress
+		mov	word cx, [ds:edi + 02ch]	; Program Header 个数
+		mov	dword eax, [ds:edi + 01ch]	; 第一个Program Header 相对于文件头的偏移
+		add	eax, KernelPhyBaseAddress
+		mov	esi, eax			; ds:esi 指向Program Header 内存单元
+		
+	KernelCopyLoop:
+		test	ecx, ecx
+		jz	KernelCopyComplete	
+
+		mov	dword eax, [ds:esi]		; 检查类型
+		test	eax, eax
+		jz	OneProgramHeaderComplete	
+
+		mov	dword edx, [ds:esi + 16]	; size
+		push	edx
+		mov	dword edx, [ds:esi + 4]		; 源地址
+		add	edx, KernelPhyBaseAddress	; KernelSeg * 010h + KernelOffset
+		push	edx
+		mov	dword edx, [ds:esi + 8]		; 目标地址
+		push	edx
+		call	MemCopy
+		add	esp, 12
+
+	OneProgramHeaderComplete:
+		add	esi, 0x20
+		dec	cx
+		jmp	KernelCopyLoop
+
+	
+	KernelCopyComplete:
+		pop	ds
+		pop	esi
+		pop	edi
+		pop	edx
+		pop	ecx
+		pop	eax
+
+		ret
+	;==== InitKernel End =========================
+		
+
+
+%include "lib.inc.asm"
 
 
 Code32Len equ	$ - $$
-
-
-
 
 
 
@@ -1182,28 +662,51 @@ LABEL_DATA:
 				dd	0
 	_SavedIMREG:		db	0
 
-	szPMMessage		equ	_szPMMessage	+	090000h
-	szTitle			equ	_szTitle	+	090000h
-	szRAMSize		equ	_szRAMSize	+	090000h
-	szReturn		equ	_szReturn	+	090000h
-	dwDispPos		equ	_dwDispPos	+	090000h
-	ARDS			equ	_ARDS		+	090000h
-		dwBAL		equ	_dwBAL		+	090000h
-		dwBAH		equ	_dwBAH		+	090000h
-		dwLL		equ	_dwLL		+	090000h
-		dwType		equ	_dwType		+	090000h
-	dwMemBlockCount		equ	_dwMemBlockCount+	090000h
-	dwRAMSize		equ	_dwRAMSize	+	090000h
-	memChkBuf		equ	_memChkBuf	+	090000h
-	SavedIdtr		equ	_SavedIdtr	+	090000h
-	SavedIMREG		equ	_SavedIMREG	+	090000h
+
+
+
+
+	PageDirBase		equ	100000h
+	PageTblBase		equ	101000h
+	LoaderPhyBaseAddr	equ	090000h	; 自身(Loader)被加载的段的物理基址
+	KernelSeg		equ	08000h
+	KernelOffset		equ	0000h	
+	KernelPhyBaseAddress	equ	KernelSeg * 010h + KernelOffset
+	ReLoadKernelPhyBaseAddr	equ	030400h
+	RootFirstSectorNo	equ	19	; 根目录第一扇区号
+
+
+	szPMMessage		equ	_szPMMessage	+	LoaderPhyBaseAddr
+	szTitle			equ	_szTitle	+	LoaderPhyBaseAddr
+	szRAMSize		equ	_szRAMSize	+	LoaderPhyBaseAddr
+	szReturn		equ	_szReturn	+	LoaderPhyBaseAddr
+	dwDispPos		equ	_dwDispPos	+	LoaderPhyBaseAddr
+	ARDS			equ	_ARDS		+	LoaderPhyBaseAddr
+		dwBAL		equ	_dwBAL		+	LoaderPhyBaseAddr
+		dwBAH		equ	_dwBAH		+	LoaderPhyBaseAddr
+		dwLL		equ	_dwLL		+	LoaderPhyBaseAddr
+		dwType		equ	_dwType		+	LoaderPhyBaseAddr
+	dwMemBlockCount		equ	_dwMemBlockCount+	LoaderPhyBaseAddr
+	dwRAMSize		equ	_dwRAMSize	+	LoaderPhyBaseAddr
+	memChkBuf		equ	_memChkBuf	+	LoaderPhyBaseAddr
+	SavedIdtr		equ	_SavedIdtr	+	LoaderPhyBaseAddr
+	SavedIMREG		equ	_SavedIMREG	+	LoaderPhyBaseAddr
+
+
+
+	KernelName:		db	'KERNEL  BIN'
+	KernelFound:		db	'Kernel Loading', 0
+	KernelNoKernel:		db	'NO KERNEL', 0
+	KernelReady		db	'Ready.', 0
+	bSectorsToRead:		db	0
+	bRootSectorNum:		db	14	; 根目录大小(14个扇区)
+	bIndexForRootSectorLoop:db	0
+	wSectorNoForRead:	dw	RootFirstSectorNo
+
+
 
 DataLen			equ	$ - $$
 ;=============================================================================================	
-
-
-
-
 
 
 
@@ -1219,9 +722,5 @@ LABEL_STACK:
 
 TopOfStack	equ	$ - $$ - 1
 ;=============================================================================================	
-
-
-
-
 
 

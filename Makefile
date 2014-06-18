@@ -6,9 +6,11 @@ BOOTER		= boot/boot.bin
 LOADER		= boot/loader.bin
 KERNEL		= kernel/kernel.bin
 TARGETS		= $(BOOTER) $(LOADER) $(KERNEL)
+ASM_BOOTER_ARGS	= -I boot/include/ # 后面的"/"务必加上！还得我花了好多时间！
 ASM_LOADER_ARGS	= -I boot/include/ # 后面的"/"务必加上！还得我花了好多时间！
 ASM_KERNEL_ARGS	= -f elf
-OBJS		= kernel/kernel.o kernel/start.o lib/string.o lib/kliba.o
+CC_KERNEL_ARGS	= -I include/
+OBJS		= kernel/kernel.o kernel/start.o kernel/i8259.o kernel/protect.o lib/string.o lib/kliba.o
 LD_KERNEL_ARGS	= -s -Ttext 0x030400
 
 
@@ -32,7 +34,7 @@ realclean: clean
 image: all building
 	
 buildimg:
-	dd if=$(BOOTER) of=a.img bs=512 count=1 conv=notrunc
+#	dd if=$(BOOTER) of=a.img bs=512 count=1 conv=notrunc
 	sudo mount -o loop a.img /mnt/floppy/
 	sudo cp -fv $(LOADER) /mnt/floppy/
 	sudo cp -fv $(KERNEL) /mnt/floppy/
@@ -45,14 +47,21 @@ buildimg:
 $(KERNEL): $(OBJS)	
 	$(LD) $(LD_KERNEL_ARGS) -o $@ $(OBJS)
 
-$(LOADER): boot/loader.asm boot/include/pm.inc boot/include/lib.inc
+$(LOADER): boot/loader.asm boot/include/pm.inc.asm boot/include/fat12hdr.inc.asm boot/include/lib.inc.asm 
 	$(ASM) $(ASM_LOADER_ARGS) -o $@ $<
 
-$(BOOTER): boot/boot.asm
-	$(ASM) -o $@ $<	
+$(BOOTER): boot/boot.asm boot/include/fat12hdr.inc.asm
+	$(ASM) $(ASM_BOOTER_ARGS) -o $@ $<	
 
-kernel/start.o: kernel/start.c
-	$(CC) -o $@ $<
+kernel/start.o: kernel/start.c include/const.h include/type.h include/proto.h include/global.h include/string.h
+	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
+
+kernel/protect.o: kernel/protect.c include/const.h include/type.h include/proto.h include/global.h
+	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
+
+kernel/i8259.o: kernel/i8259.c include/const.h include/type.h include/proto.h include/global.h
+	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
+
 
 kernel/kernel.o: kernel/kernel.asm
 	$(ASM) $(ASM_KERNEL_ARGS) -o $@ $<

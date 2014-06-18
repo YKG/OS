@@ -87,66 +87,6 @@ xchg	bx, bx
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 初始化 8259A 
-
-	;==== Init8259A ==============================
-	Init8259A:
-		mov	al, 011h
-		out	020h, al
-		call	io_delay
-
-		out	0a0h, al
-		call	io_delay
-
-
-		mov	al, 020h
-		out	021h, al
-		call	io_delay
-
-		mov	al, 028h
-		out	0a1h, al
-		call	io_delay
-
-
-		mov	al, 004h
-		out	021h, al
-		call	io_delay
-
-		mov	al, 002h
-		out	0a1h, al
-		call	io_delay
-
-
-		mov	al, 001h
-		out	021h, al
-		call	io_delay
-
-		out	0a1h, al
-		call	io_delay
-
-		; - - - - - - - -
-		mov	al, 11111101b	; 仅开键盘中断
-		out	021h, al
-		call	io_delay
-
-		mov	al, 11111111b
-		out	0a1h, al
-		call	io_delay
-
-		ret
-
-		;---------------
-		io_delay:
-			nop
-			nop
-			nop
-			nop
-		ret
-	;==== Init8259A  End =========================
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -331,7 +271,7 @@ hwinterupt:
 	call	spurious_irq
 	add	esp, 4
 
-	ret
+	iretd			; 不要写成 ret 了 !
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 

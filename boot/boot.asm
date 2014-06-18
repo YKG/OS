@@ -7,32 +7,9 @@ TopOfStack		equ	07c00h	; 不能是 0100h
 ;	找磁盘上是否有LOADER.BIN文件
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
 org  07c00h			; Boot 状态, Bios 将把 Boot Sector 加载到 0:7C00 处并开始执行
-	jmp short LABEL_START		; Start to boot.
-	nop				; 这个 nop 不可少
 
-	; 下面是 FAT12 磁盘的头
-	BS_OEMName	DB 'ForrestY'	; OEM String, 必须 8 个字节
-	BPB_BytsPerSec	DW 512		; 每扇区字节数
-	BPB_SecPerClus	DB 1		; 每簇多少扇区
-	BPB_RsvdSecCnt	DW 1		; Boot 记录占用多少扇区
-	BPB_NumFATs	DB 2		; 共有多少 FAT 表
-	BPB_RootEntCnt	DW 224		; 根目录文件数最大值
-	BPB_TotSec16	DW 2880		; 逻辑扇区总数
-	BPB_Media	DB 0xF0		; 媒体描述符
-	BPB_FATSz16	DW 9		; 每FAT扇区数
-	BPB_SecPerTrk	DW 18		; 每磁道扇区数
-	BPB_NumHeads	DW 2		; 磁头数(面数)
-	BPB_HiddSec	DD 0		; 隐藏扇区数
-	BPB_TotSec32	DD 0		; 如果 wTotalSectorCount 是 0 由这个值记录扇区数
-	BS_DrvNum	DB 0		; 中断 13 的驱动器号
-	BS_Reserved1	DB 0		; 未使用
-	BS_BootSig	DB 29h		; 扩展引导标记 (29h)
-	BS_VolID	DD 0		; 卷序列号
-	BS_VolLab	DB 'OrangeS0.02'; 卷标, 必须 11 个字节
-	BS_FileSysType	DB 'FAT12   '	; 文件系统类型, 必须 8个字节  
+%include "fat12hdr.inc.asm"
 
 LABEL_START:
 	mov	ax, cs
@@ -44,17 +21,6 @@ LABEL_START:
 	mov	ah, 000h
 	mov	dl, 0		; A盘
 	int	13h		; 复位软驱
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 计算根目录占用的扇区数目，保存在[bRootSectorNum]中
-; 下面是计算方法，为了简单起见，直接将14写在初始化里面 
-;-------------------------------------------------------------------
-;	mov	al, BPB_RootEntCnt
-;	mov	bl, 16		; 16 = 512/32, 每扇区共16个文件属性
-;	div	bl
-;	mov	byte [bRootSectorNum], al ; 根目录占用的扇区数目
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 
@@ -117,25 +83,8 @@ LABEL_NOT_FOUND:
 	call	DispStr
 	jmp	$	
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	mov	ax, 0b800h
-;	mov	gs, ax
-;	mov	ah, 0ch
-;	mov	al, 'N'		; 没找到
-;	mov	[gs:(80*3 + 3)*2], ax
-;	jmp	$
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 LABEL_FOUND:
-xchg	bx, bx
-;------------------------------------------------
-;清屏
-;	mov	ax, 0600h	; ah = 6, al = 0
-;	mov	bx, 0700h	; 黑底白字
-;	mov	cx, 0		; 左上角(0, 0)
-;	mov	dx, 0184fh	; 右下角(80, 50)
-;	int	10h
-;------------------------------------------------
 	call	cls		; 清屏
 
 
@@ -167,26 +116,17 @@ LABEL_GO_ON_LOADING:
 	add	si, 2
 	pop	ax
 
-
-
-
-
 	push	ax
 	add	ax, 19 + 14 - 2
 	mov	byte [bSectorsToRead], 1 ; 读1个扇区
 	call	ReadSector
 	pop	ax
 
-
-
 	call	GetFATEntry
-
 	cmp	ax, 0fffh
 	je	LABEL_LOADER_LOADED
 	add	bx, 512		; 继续加载到下一扇区
 	jmp	LABEL_GO_ON_LOADING
-
-
 
 
 LABEL_LOADER_LOADED:
@@ -381,9 +321,6 @@ cls:
 
 	ret
 ;----------------------------------------------------------------------------
-
-
-
 
 
 
