@@ -1,6 +1,6 @@
 SelectorFlatC		equ	8	; gdt[1]
 SelectorFlatRW		equ	010h	; gdt[2]
-SELECTOR_TSS		equ	028h	; gdt[5]
+SELECTOR_TSS		equ	020h	; gdt[4]
 SA_TIL			equ	4
 SA_RPL1			equ	1
 TOP_REGS_OF_PROC	equ	18*4	; 18个寄存器(PROCESS)
@@ -20,6 +20,8 @@ extern	delay
 extern	k_reenter
 extern	p_proc_ready
 extern	proc_table
+extern	clock_handler
+
 
 [section .bss]
 resb	2*1024
@@ -68,6 +70,7 @@ global	hwint13
 global	hwint14
 global	hwint15
 global	hwinterupt
+
 
 global	restart
 
@@ -239,32 +242,53 @@ xchg	bx, bx
 
 	sti
 	
-	mov	eax, proc_table
-	cmp	eax, [p_proc_ready]
-	je	.a
-	mov	dword [p_proc_ready], proc_table
-	jmp	.e
-.a:
-	mov	dword [p_proc_ready], proc_table + 05ch
-	jmp	.e
-	
-.e:
-	push	clock_int_msg
-	call	DispString
-	add	esp, 4
+;	mov	eax, proc_table
+;	cmp	eax, [p_proc_ready]
+;	je	.a
+;	mov	dword [p_proc_ready], proc_table
+;	jmp	.e
+;.a:
+;	mov	dword [p_proc_ready], proc_table + 05ch
+;	jmp	.e
+;	
+;.e:
+;	push	clock_int_msg
+;	call	DispString
+;	add	esp, 4
+;
+;;	call	delay
 
-;	call	delay
+	push	0		; int 0
+	call	clock_handler
+	add	esp, 4
 
 	cli
 
-.reenter:	
-	dec	dword [ds:k_reenter]
+;================================================================================ 
+; 重大修订, 更新至此
+;- - - - - - - - - - - - - - - - - - -
 
 	mov	esp, [p_proc_ready]
 	lea	eax, [esp + TOP_REGS_OF_PROC]
 	mov	dword [tss + 4], eax	; esp0
+;
+;================================================================================
 
 
+.reenter:	
+	dec	dword [ds:k_reenter]
+;================================================================================ 
+; 重大修订
+;- - - - - - - - - - - - - - - - - - -
+;
+; 更改 TSS 不应该在这里做！ 刚刚仔细推演过各种情况了，放在这里是不合适的，
+; 虽然运行是没有问题的，当然理论也是没有问题的，但这样做不好，逻辑上就不是很好。
+; 更新到 .reenter 上面了。
+;	mov	esp, [p_proc_ready]
+;	lea	eax, [esp + TOP_REGS_OF_PROC]
+;	mov	dword [tss + 4], eax	; esp0
+;
+;================================================================================
 	pop	gs
 	pop	fs
 	pop	es
@@ -275,8 +299,7 @@ xchg	bx, bx
 
 	iretd
 
-	push	0		; int 0
-	jmp	hwinterupt
+
 
 hwint01:
 	push	1		; int 1

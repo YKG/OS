@@ -39,8 +39,9 @@
 	#define	SelectorFlatC	0x008
 	#define	SelectorFlatRW	0x010
 	#define	SelectorVIDEO	0x018
-	#define	SelectorLDT		0x020
-	#define	SelectorTSS		0x028
+	#define	SelectorTSS		0x020
+	#define	SelectorLDT		0x028
+
 
 	#define INT_VECTOR_IRQ0 0x020
 	#define INT_VECTOR_IRQ1 0x028

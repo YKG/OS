@@ -48,11 +48,15 @@ void hwint14();
 void hwint15();
 void hwinterupt();
 void spurious_irq(u32 vector_no);
+void clock_handler(u32 vector_no);
+
 
 void restart();
 void delay();
 void TestA();
 void TestB();
+void TestC();
+void TestD();
 
 
 #endif

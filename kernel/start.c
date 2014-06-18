@@ -29,7 +29,7 @@ void cstart()
 	*gdt_base	= (u32)gdt;
 	*idt_limit	= IDT_SIZE*(sizeof(GATE)) - 1;
 	*idt_base	= (u32)idt;
-	init_descriptor(&gdt[5], (u32)&tss, sizeof(TSS) - 1, DA_386TSS);
+	init_descriptor(&gdt[4], (u32)&tss, sizeof(TSS) - 1, DA_386TSS);
 
 
 	Init_IDT();

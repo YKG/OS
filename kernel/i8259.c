@@ -37,3 +37,18 @@ void spurious_irq(u32 vector_no)
 	out_byte(PORT_M_ICW1, 0x20);	/* 发送 EOI, port: 0x20, value: 0x20 */
 }
 
+
+
+void clock_handler(u32 vector_no)
+{	
+	if (p_proc_ready < &proc_table[n_tasks - 1])
+	{
+		p_proc_ready++;
+	}
+	else
+	{
+		p_proc_ready = proc_table;
+	}
+
+}
+

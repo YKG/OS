@@ -92,4 +92,12 @@ typedef	struct s_proc
 } PROCESS;
 
 
+
+typedef	struct p_task
+{
+	u32	initial_eip;	
+} TASK;
+
+
+
 #endif
