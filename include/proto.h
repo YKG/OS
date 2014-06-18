@@ -77,7 +77,7 @@ void init_clock();
 void disable_int();
 void enable_int();
 void task_tty();
-
+void in_process(u32 key);
 
 
 #endif

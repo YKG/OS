@@ -80,9 +80,9 @@ kernel/keyboard.o: kernel/keyboard.c include/const.h include/type.h include/prot
 kernel/global.o: kernel/global.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
-kernel/tty.o: kernel/tty.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h
+kernel/tty.o: kernel/tty.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h \
+		include/keyboard.h 
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
-
 
 kernel/kernel.o: kernel/kernel.asm
 	$(ASM) $(ASM_KERNEL_ARGS) -o $@ $<

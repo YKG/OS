@@ -31,7 +31,7 @@ static u8	get_byte_from_kbuf()
 	kb_in.head++;
 	if (kb_in.head == kb_in.buf + KB_IN_BYTES)
 	{
-		kb_in.tail = kb_in.buf;
+		kb_in.head = kb_in.buf;
 	}
 	kb_in.count--;
 
@@ -65,8 +65,7 @@ void keyboard_read()
 {	
 	u8 scan_code;
 	u32	key;
-	char output[2] = {0, 0};
-
+	
 	if (kb_in.count > 0)
 	{
 		scan_code = get_byte_from_kbuf();
@@ -140,41 +139,35 @@ void keyboard_read()
 			{
 			case SHIFT_L:
 				shift_l = make;
-				key = 0;
 				break;
 			case SHIFT_R:
 				shift_r = make;
-				key = 0;
 				break;
 			case ALT_L:
 				alt_l = make;
-				key = 0;
 				break;
 			case ALT_R:
 				alt_r = make;
-				key = 0;
 				break;
 			case CTRL_L:
 				ctrl_l = make;
-				key = 0;
 				break;
 			case CTRL_R:
 				ctrl_r = make;
-				key = 0;
 				break;
 			default:
-//				disp_color_str("default", 0x07);
-				if (!make)
-				{
-					key = 0;
-				}		
 				break;
 			}
 			
-			if (key)
-			{
-				output[0] = key;
-				disp_color_str(output, 0x0c);
+			if (make) { /* 忽略 Break Code */
+				key |= shift_l	? FLAG_SHIFT_L	: 0;
+				key |= shift_r	? FLAG_SHIFT_R	: 0;
+				key |= ctrl_l	? FLAG_CTRL_L	: 0;
+				key |= ctrl_r	? FLAG_CTRL_R	: 0;
+				key |= alt_l	? FLAG_ALT_L	: 0;
+				key |= alt_r	? FLAG_ALT_R	: 0;
+			
+				in_process(key);
 			}
 		}
 	}
