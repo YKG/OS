@@ -220,27 +220,8 @@ exception:
 
 hwint00:
 xchg	bx, bx
-
-	pushad
-	push	ds
-	push	es
-	push	fs
-	push	gs
-
-	inc	byte [gs:0]
 	mov	al, 0x20	; 发送EOI
 	out	0x20, al
-
-	push	clock_int_msg
-	call	DispString
-	add	esp, 4
-
-	pop	gs
-	pop	fs
-	pop	es
-	pop	ds
-	popad
-
 	iretd
 
 
@@ -362,11 +343,5 @@ xchg	bx, bx
 	call	TestA
 
 	jmp	$
-
-
-
-
-[section .data]
-clock_int_msg:	db	'^', 0
 
 
