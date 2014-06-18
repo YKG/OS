@@ -17,6 +17,19 @@ void Init_IDT_DESC(u8 vec_no, u8 type, void * handler, u8 privilege)
 }
 
 
+
+void init_descriptor(DESCRIPTOR *desc, u32 base, u32 limit, u16 attr)
+{
+	desc->desc_limit_low		= (u16)(limit);
+	desc->desc_base_low			= (u16)(base);
+	desc->desc_base_mid			= (u8)(base>>16);
+	desc->desc_attr_low			= (u8)(attr);
+	desc->desc_limit_attr_high	= (u8)(limit>>16 | attr>>8);
+	desc->desc_base_high		= (u8)(base>>24);
+}
+
+
+
 void Init_IDT()
 {
 	Init8259A();

@@ -3,20 +3,32 @@
 
 	#define GDT_SIZE		128
 	#define IDT_SIZE		256
+	#define LDT_SIZE		128
 
 	#define	DA_386CGate		0x08C
 	#define	DA_386IGate		0x08E
 	#define	DA_386TGate		0x08F
 
-	#define	DA_DPL0			0
-	#define	DA_DPL1			1
-	#define	DA_DPL2			2
-	#define	DA_DPL3			3
+	#define	DA_DPL0			0x00
+	#define	DA_DPL1			0x20
+	#define	DA_DPL2			0x40
+	#define	DA_DPL3			0x60
+
+
+	#define	DA_32			0x4000
+	#define	DA_LIMIT_4K		0x8000
+	#define	DA_C			0x98
+	#define	DA_DRW			0x92
+
+
+	#define	DA_LDT			0x82
+	#define	DA_386TSS		0x89
+
+	#define	SA_TIL			0x04
 
 	#define	SelectorFlatC	0x008
 	#define INT_VECTOR_IRQ0 0x020
 	#define INT_VECTOR_IRQ1 0x028
-
 
 
 	#define	PORT_M_ICW1		0x020

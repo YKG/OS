@@ -2,6 +2,7 @@ extern	disp_pos
 
 [section .text]
 global	DispString
+global	disp_color_str
 global	DispInt
 global	out_byte
 global	in_byte
@@ -58,6 +59,62 @@ DispString:
 	ret
 ;==== DispString End =========================
 
+
+
+
+
+;==== disp_color_str =========================
+; disp_color_str(char *str, u8 color)
+;=========================================
+disp_color_str:
+	push	eax
+	push	ebx
+	push	ecx
+	push	edx
+	push	esi
+	push	edi
+	
+
+	mov	dword esi, [esp + 24 + 4]	; 字符串指针, 记得 eip！
+	mov	dword ecx, [esp + 24 + 4 + 4]	; color
+	mov	dword edi, [disp_pos]
+
+.NextChar:	
+	mov	byte al, [ds:esi]
+	test	al, al
+	jz	.DispComplete
+	cmp	al, 0Ah
+	je	.DispReturn
+	mov	ah, cl				; cl 颜色
+	mov	word [gs:di], ax
+	inc	esi
+	add	di, 2
+	jmp	.NextChar
+.DispReturn:
+	; 换行
+	xor	eax, eax
+	xor	edx, edx
+	mov	bx, 80*2
+	mov	ax, di
+	div	bx
+	inc	ax
+	mul	bx
+	mov	di, ax
+	inc	esi
+	jmp	.NextChar
+
+.DispComplete:
+	mov	dword [disp_pos], edi
+
+	pop	edi
+	pop	esi
+	pop	edx
+	pop	ecx
+	pop	ebx
+	pop	eax
+
+	ret
+;==== disp_color_str End =====================
 
 
 

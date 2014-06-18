@@ -1,16 +1,25 @@
-SelectorFlatC	equ	8
+SelectorFlatC	equ	8	; gdt[1]
+SELECTOR_TSS	equ	028h	; gdt[5]
+SA_TIL		equ	4
+SA_RPL1		equ	1
 
 
+extern	kernel_main
 extern	cstart
 extern	gdt_ptr
 extern	idt_ptr
+extern	tss
 extern	exception_handler
 extern	spurious_irq
+extern	TestA
+extern	DispString
+extern	delay
 
 [section .bss]
 resb	2*1024
 TopOfStack:
-
+resb	2*1024
+TopOfTaskStack:
 
 [section .text]
 global	_start
@@ -54,9 +63,10 @@ global	hwint14
 global	hwint15
 global	hwinterupt
 
+global	restart
 
 _start:
-xchg	bx, bx
+;xchg	bx, bx
 	mov	esp, TopOfStack
 
 	sgdt	[gdt_ptr]
@@ -64,15 +74,23 @@ xchg	bx, bx
 	lgdt	[gdt_ptr]
 	lidt	[idt_ptr]
 	
+	xor	eax, eax
+	mov	ax, SELECTOR_TSS
+	ltr	ax
+
+
 	jmp	SelectorFlatC:csinit
 
 csinit:
 	sti
 
+xchg	bx, bx
+	jmp	SelectorFlatC:kernel_main
+
 	jmp	$
 	hlt
 
-xchg	bx, bx
+
 ;	ud2
 ;	jmp	0x40:0
 	xor	bl, bl
@@ -197,11 +215,12 @@ exception:
 
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 外部中断
 
 hwint00:
+	iretd
+
 	push	0		; int 0
 	jmp	hwinterupt
 
@@ -277,4 +296,39 @@ hwinterupt:
 
 
 
+
+
+
+
+
+restart:
+xchg	bx, bx
+;	lea	ebx, [gdt_ptr]	; 等价与 mov ebx, gdt_ptr
+
+	
+	mov	dword [tss + 4], esp	; esp0
+	mov	word [tss + 8], ss	; ss0
+
+	mov	ax, 0x20	; LDT 选择子
+	lldt	ax
+	
+	mov	ax, 8 + SA_RPL1 + SA_TIL
+	mov	ds, ax			; 设置进入RING1后的ds, es
+	mov	es, ax
+
+	push	eax			; SS0
+	push	TopOfTaskStack		; ESP0
+	push	0 + SA_RPL1 + SA_TIL	; CS
+	push	TestA			; EIP
+xchg	bx, bx
+	retf	
+
+
+
+	jmp	0 + SA_RPL1 + SA_TIL:TestA
+	mov	ah, 0ch
+	mov	al, 'S'
+	mov	[gs:(80*15 + 5)*2], ax
+	call	TestA
+	jmp	$
 

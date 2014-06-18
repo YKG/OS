@@ -10,7 +10,7 @@ ASM_BOOTER_ARGS	= -I boot/include/ # 后面的"/"务必加上！还得我花了�
 ASM_LOADER_ARGS	= -I boot/include/ # 后面的"/"务必加上！还得我花了好多时间！
 ASM_KERNEL_ARGS	= -f elf
 CC_KERNEL_ARGS	= -I include/
-OBJS		= kernel/kernel.o kernel/start.o kernel/i8259.o kernel/protect.o lib/string.o lib/kliba.o
+OBJS		= kernel/kernel.o kernel/start.o kernel/i8259.o kernel/protect.o lib/string.o lib/kliba.o kernel/main.o
 LD_KERNEL_ARGS	= -s -Ttext 0x030400
 
 
@@ -34,7 +34,7 @@ realclean: clean
 image: all building
 	
 buildimg:
-#	dd if=$(BOOTER) of=a.img bs=512 count=1 conv=notrunc
+	dd if=$(BOOTER) of=a.img bs=512 count=1 conv=notrunc
 	sudo mount -o loop a.img /mnt/floppy/
 	sudo cp -fv $(LOADER) /mnt/floppy/
 	sudo cp -fv $(KERNEL) /mnt/floppy/
@@ -62,6 +62,8 @@ kernel/protect.o: kernel/protect.c include/const.h include/type.h include/proto.
 kernel/i8259.o: kernel/i8259.c include/const.h include/type.h include/proto.h include/global.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
+kernel/main.o: kernel/main.c include/const.h include/type.h include/proto.h include/global.h include/string.h
+	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
 kernel/kernel.o: kernel/kernel.asm
 	$(ASM) $(ASM_KERNEL_ARGS) -o $@ $<

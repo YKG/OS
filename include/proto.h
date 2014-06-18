@@ -1,7 +1,11 @@
 #ifndef	_OS_PROTO_H_
 #define	_OS_PROTO_H_
 
-void DispString();
+void DispString(char *str);
+void disp_color_str(char *str, u8 color);
+void DispInt(u32 i);
+
+void init_descriptor(DESCRIPTOR *desc, u32 base, u32 limit, u16 attr);
 void Init_IDT_DESC(u8 vec_no, u8 type, void * handler, u8 privilege);
 void Init_IDT();
 void Init8259A();
@@ -44,5 +48,10 @@ void hwint14();
 void hwint15();
 void hwinterupt();
 void spurious_irq(u32 vector_no);
+
+void restart();
+void delay();
+void TestA();
+
 
 #endif

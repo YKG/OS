@@ -10,7 +10,7 @@
 void cstart()
 {	
 	DispString("\n\nHello, world! By YKG\ncstart address: ");
-	DispInt(cstart);
+	DispInt((u32)cstart);
 	DispString("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
 				"======== cstart begin =========\n");
 
@@ -25,11 +25,11 @@ void cstart()
 			(void *)(*(u32 *)(&(gdt_ptr[2]))),
 			(*(u16 *)gdt_ptr) + 1);
 
-	*gdt_limit = GDT_SIZE*(sizeof(DESCRIPTOR)) - 1;
-	*gdt_base  = (u32)gdt;
-	*idt_limit = IDT_SIZE*(sizeof(GATE)) - 1;
-	*idt_base  = (u32)idt;
-	
+	*gdt_limit	= GDT_SIZE*(sizeof(DESCRIPTOR)) - 1;
+	*gdt_base	= (u32)gdt;
+	*idt_limit	= IDT_SIZE*(sizeof(GATE)) - 1;
+	*idt_base	= (u32)idt;
+	init_descriptor(&gdt[5], (u32)&tss, sizeof(TSS) - 1, DA_386TSS);
 
 
 	Init_IDT();

@@ -2,7 +2,11 @@
 
 org  0100h			; 0x9000:0x100
 
+	jmp  LABEL_START		; 没有加 short (jmp short), 所以下面的 nop 不能有
+;	nop				; 这个 nop 不可少
+
 %include "fat12hdr.inc.asm"
+
 
 
 ;=============================================================================================
@@ -13,7 +17,7 @@ LABEL_GDT:
 	GDT_DESC:	Descriptor	0, 0, 0
 	FlatC_DESC:	Descriptor	0, 0ffffh, DA_C | DA_32 | DA_LIMIT_4K
 	FlatRW_DESC:	Descriptor	0, 0ffffh, DA_DRW| DA_32 |DA_LIMIT_4K	; 把我害死了 DA_32 ！
-	VIDEO_DESC:	Descriptor	0b8000h, 0ffffh, DA_DRW
+	VIDEO_DESC:	Descriptor	0b8000h, 0ffffh, DA_DRW + DA_DPL3
 
 
 	GdtLen	equ	$ - $$

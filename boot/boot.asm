@@ -1,7 +1,3 @@
-TopOfStack		equ	07c00h	; 不能是 0100h
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;程序功能：
 ;	找磁盘上是否有LOADER.BIN文件
@@ -9,7 +5,11 @@ TopOfStack		equ	07c00h	; 不能是 0100h
 
 org  07c00h			; Boot 状态, Bios 将把 Boot Sector 加载到 0:7C00 处并开始执行
 
+	jmp short LABEL_START		; 如果不加 short，该句会是 3byte, 那样就不能有nop
+	nop				
+
 %include "fat12hdr.inc.asm"
+
 
 LABEL_START:
 	mov	ax, cs
@@ -324,6 +324,7 @@ cls:
 
 
 
+TopOfStack		equ	07c00h	; 不能是 0100h
 
 
 DestSeg			equ	09000h
