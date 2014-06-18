@@ -59,7 +59,7 @@ LABEL_START:
 
 	mov	ax, KernelSeg
 	mov	es, ax
-	mov	bx, KernelOffset; 设置es:bx 为 0x9000:0100, Kernel将放到此处
+	mov	bx, KernelOffset; 设置es:bx 为 0x8000:0000, Kernel将放到此处
 LABEL_SEARCH_IN_ROOT_DIR_LOOP:
 	mov	word ax, [wSectorNoForRead]
 	mov	byte [bSectorsToRead], 1	; 读1个扇区
