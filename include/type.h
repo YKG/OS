@@ -60,11 +60,8 @@ typedef	struct p_tss
 
 
 
-
-
-
-typedef	struct s_proc
-{	
+typedef struct s_stackframe
+{
 	u32	gs;
 	u32	fs;
 	u32	es;
@@ -79,15 +76,23 @@ typedef	struct s_proc
 	u32	ecx;
 	u32	eax;
 
-	u32	error_code; /* 发生中断时自动填充 */ /* 忘记手动越过这个地方，调了好久才发现 ——2011-7-7 19:18:58 */
+	/*u32	error_code; *//* 发生中断时自动填充 */ /* 忘记手动越过这个地方，调了好久才发现 ——2011-7-7 19:18:58 */
+	u32	retaddr;		/* 中断应该不产生error_code，不过这个位置可以放置中断处理过程中的一个返回地址 */
 	u32	eip;
 	u32	cs;	
 	u32	eflags;
 	u32	esp;
 	u32 ss;
+} STACK_FRAME;
 
-	u16	proc_selector;
-	
+
+
+
+
+typedef	struct s_proc
+{	
+	STACK_FRAME regs;
+	u16	proc_selector;	
 	DESCRIPTOR	ldts[2];
 } PROCESS;
 

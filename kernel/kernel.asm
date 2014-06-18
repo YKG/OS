@@ -5,6 +5,7 @@ SA_TIL			equ	4
 SA_RPL1			equ	1
 TOP_REGS_OF_PROC	equ	18*4	; 18个寄存器(PROCESS)
 SELECTOR_OF_PROC	equ	18*4	; 选择子在PROCESS中的偏移
+RETADDR_AT_PROC_REGS	equ	12*4	; retaddr在PROCESS.REG中的偏移，即以前的error_code位置，好像中断没有error_code
 
 extern	kernel_main
 extern	cstart
@@ -219,7 +220,24 @@ exception:
 
 hwint00:
 xchg	bx, bx
-	sub	esp, 4		; 越过 error_code
+	
+	call	save		; 下一条语句的 地址(EIP) 入栈
+	
+	inc	byte [gs:0]
+	mov	al, 0x20	; 发送EOI
+	out	0x20, al
+	
+	sti
+	push	0		; int 0
+	call	clock_handler
+	add	esp, 4
+	cli
+
+	ret
+
+
+save:
+;	sub	esp, 4		; 越过 error_code || 其实是越过 retaddr
 	pushad
 	push	ds
 	push	es
@@ -230,30 +248,17 @@ xchg	bx, bx
 	mov	es, ax
 	mov	fs, ax
 
+	mov	ebx, esp
 	
-	inc	byte [gs:0]
-	mov	al, 0x20	; 发送EOI
-	out	0x20, al
-
 	inc	dword [ds:k_reenter]
 	cmp	dword [ds:k_reenter], 0
 	jne	.1
-;	jne	.reenter
-
 	mov	esp, TopOfStack
 	push	restart
-	jmp	.2
+	jmp	dword [ebx + RETADDR_AT_PROC_REGS]
 .1:	
 	push	reenter
-.2:
-	sti
-	push	0		; int 0
-	call	clock_handler
-	add	esp, 4
-	cli
-
-	ret
-
+	jmp	dword [ebx + RETADDR_AT_PROC_REGS]
 
 
 

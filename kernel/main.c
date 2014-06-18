@@ -50,17 +50,17 @@ void kernel_main()
 		init_descriptor(&(p_proc->ldts[0]), 0, 0x0ffff, DA_C | DA_32 | DA_LIMIT_4K | DA_DPL1);	// CS
 		init_descriptor(&(p_proc->ldts[1]), 0, 0x0ffff, DA_DRW| DA_32 |DA_LIMIT_4K | DA_DPL1);	// DS, ES, SS
 		
-		p_proc->ds	= 8 + SA_RPL1 + SA_TIL;					/* p_proc->ldts[1] + SA_RPL1 + SA_TIL */
-		p_proc->es	= p_proc->ds;
-		p_proc->fs	= p_proc->ds;
-		p_proc->gs	= SelectorVIDEO;
+		p_proc->regs.ds	= 8 + SA_RPL1 + SA_TIL;					/* p_proc->ldts[1] + SA_RPL1 + SA_TIL */
+		p_proc->regs.es	= p_proc->regs.ds;
+		p_proc->regs.fs	= p_proc->regs.ds;
+		p_proc->regs.gs	= SelectorVIDEO;
 
-		p_proc->ss	= p_proc->ds;
+		p_proc->regs.ss	= p_proc->regs.ds;
 		task_stack_top -= task_table[i].stack_size;	/* 栈大小 stack_size */
-		p_proc->esp = task_stack_top;				
-		p_proc->cs	= 0 + SA_RPL1 + SA_TIL;			/* p_proc->ldts[0] */
-		p_proc->eip = task_table[i].initial_eip;
-		p_proc->eflags = 0x1202;					/* IOPL 1, IF 1, 第1bit总为1 ，开始没注意这个，以至于时钟中断被屏蔽了*/
+		p_proc->regs.esp = task_stack_top;				
+		p_proc->regs.cs	= 0 + SA_RPL1 + SA_TIL;			/* p_proc->ldts[0] */
+		p_proc->regs.eip = task_table[i].initial_eip;
+		p_proc->regs.eflags = 0x1202;					/* IOPL 1, IF 1, 第1bit总为1 ，开始没注意这个，以至于时钟中断被屏蔽了*/
 	}
 
 
