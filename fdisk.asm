@@ -1,11 +1,27 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;程序功能：
-;	找磁盘上是否有LOADER.BIN文件
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 软盘读取示例
+;==============================================================
+; 读根目录区(第19扇区)到 es:bx
+;	第19扇区在磁盘上是 第1面——第0磁道——第2扇区
+;--------------------------------------------------------------
+;		
+;		mov	dl, 0		; A 盘
+;		mov	dh, 1		; 磁头号(面)
+;		mov	ch, 0		; 柱面(磁道)
+;		mov	cl, 2		; 扇区号(1开始)
+;
+;	.GoOnReading:
+;		mov	ah, 02h		; 读
+;		mov	al, 1		; 准备读的取扇区个数
+;		int	13h		
+;		jc	.GoOnReading
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
 
 
 
 org  07c00h			; Boot 状态, Bios 将把 Boot Sector 加载到 0:7C00 处并开始执行
+xchg	bx, bx
 	jmp short LABEL_START		; Start to boot.
 	nop				; 这个 nop 不可少
 
@@ -37,21 +53,10 @@ LABEL_START:
 	mov	sp, 0100h
 
 
+
 	mov	ah, 000h
 	mov	dl, 0		; A盘
 	int	13h		; 复位软驱
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 计算根目录占用的扇区数目，保存在[bRootSectorNum]中
-; 下面是计算方法，为了简单起见，直接将14写在初始化里面 
-;-------------------------------------------------------------------
-;	mov	al, BPB_RootEntCnt
-;	mov	bl, 16		; 16 = 512/32, 每扇区共16个文件属性
-;	div	bl
-;	mov	byte [bRootSectorNum], al ; 根目录占用的扇区数目
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 
 	mov	ax, DestSeg
@@ -59,9 +64,8 @@ LABEL_START:
 	mov	bx, DestOffset	; 设置es:bx 为 0x9000:0
 
 	
-LABEL_SEARCH_IN_ROOT_DIR_LOOP:
-	
-	mov	word ax, [wSectorNoForRead]
+
+	mov	ax, 19		
 	call	ReadSector	; 读第 19 扇区
 
 	
@@ -91,62 +95,35 @@ LABEL_DIFFEFRENT:
 
 
 LABEL_GO_TO_NEXT_SECTOR:
-	inc	byte [bIndexForRootSectorLoop]
-	mov	ah, byte [bIndexForRootSectorLoop]
-	mov	al, byte [bRootSectorNum]
-	cmp	ah, al
-	je	LABEL_NOT_FOUND
-	
-	inc	word [wSectorNoForRead]
-	jmp	LABEL_SEARCH_IN_ROOT_DIR_LOOP
-
-
-
-
-LABEL_NOT_FOUND:
-	mov	ax, cs
-	mov	ds, ax
-	mov	si, LoaderNoLoader
-	mov	di, (80*3 + 0)*2
-	call	DispStr
-	jmp	$	
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	mov	ax, 0b800h
-;	mov	gs, ax
-;	mov	ah, 0ch
-;	mov	al, 'N'		; 没找到
-;	mov	[gs:(80*3 + 3)*2], ax
-;	jmp	$
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-LABEL_FOUND:
-	mov	ax, cs
-	mov	ds, ax
-	mov	si, LoaderFound
-	mov	di, (80*3 + 0)*2
-	call	DispStr
+	mov	ax, 0b800h
+	mov	gs, ax
+	mov	ah, 0ch
+	mov	al, 'N'		; 没找到
+	mov	[gs:(80*3 + 3)*2], ax
 	jmp	$
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	mov	ax, 0b800h
-;	mov	gs, ax
-;	mov	ah, 0ch
-;	mov	al, 'Y'		; 找到了
-;	mov	[gs:(80*3 + 3)*2], ax
-;	jmp	$
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+LABEL_FOUND:
+	mov	ax, 0b800h
+	mov	gs, ax
+	mov	ah, 0ch
+	mov	al, 'Y'		; 找到了
+	mov	[gs:(80*3 + 3)*2], ax
+	jmp	$
 
 
 
-;	jmp	$
-;
-;	
-;	mov	ax, 1		; 读 1 扇区
-;	call	ReadSector
-;
-;	jmp	$
+
+	
+
+
+	jmp	$
+
+	
+	mov	ax, 1		; 读 1 扇区
+	call	ReadSector
+
+	jmp	$
 
 
 
@@ -189,45 +166,13 @@ ReadSector:
 
 
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; DispStr
-;	参数：	ds:si 指向待显示字符串，字符串以0结束 
-;		di    es:di 为待显示字符串首地址
-;
-DispStr:
-	mov	ax, 0b800h
-	mov	es, ax
-	
-	mov	ah, 0ch
-.disp_str_go_on:
-	mov	byte al, [ds:si]
-	test	al, al
-	jz	.return
-	mov	word [es:di], ax
-	inc	si
-	add	di, 2
-	jmp	.disp_str_go_on
-
-	
-
-.return:
-	ret
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+DestSeg		equ	09000h
+DestOffset	equ	0
 
 
 
-DestSeg			equ	09000h
-DestOffset		equ	0
-RootFirstSectorNo	equ	19	; 根目录第一扇区号
+LoaderName:	db	'LOADER  BIN'
 
-
-LoaderName:		db	'LOADER  BIN'
-LoaderFound:		db	'LOADER FOUND!', 0
-LoaderNoLoader:		db	'NO LOADER', 0
-bRootSectorNum:		db	14
-bIndexForRootSectorLoop:db	0
-wSectorNoForRead:	dw	RootFirstSectorNo
 
 
 
