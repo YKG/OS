@@ -11,8 +11,8 @@ void Init_IDT_DESC(u8 vec_no, u8 type, void * handler, u8 privilege)
 	gate = &idt[vec_no];
 	gate->gate_offset_low	= (u16)((u32)handler);
 	gate->gate_selector		= SelectorFlatC;	/* CS */
-	gate->gate_attr_low		= privilege;
-	gate->gate_attr_high	= type;				/* 0x8E 中断门 */
+	gate->gate_attr_low		= 0;				/* 此实验之前的都是错的！ */
+	gate->gate_attr_high	= type | privilege;	/* 0x8E 中断门 */
 	gate->gate_offset_high	= (u16)((u32)handler >> 16);
 }
 
@@ -73,7 +73,20 @@ void Init_IDT()
 	Init_IDT_DESC(INT_VECTOR_IRQ1 + 6, DA_386IGate, hwint14, DA_DPL0);
 	Init_IDT_DESC(INT_VECTOR_IRQ1 + 7, DA_386IGate, hwint15, DA_DPL0);
 
+
+
+	Init_IDT_DESC(0x90, DA_386IGate, sys_call, DA_DPL3);
 }
+
+
+
+
+void sys_get_ticks()
+{
+	disp_color_str("+", 0x0B);
+}
+
+
 
 
 

@@ -30,6 +30,9 @@ extern	p_proc_ready
 extern	proc_table
 extern	clock_handler
 extern	irq_table
+extern	sys_call_table
+
+
 
 [section .bss]
 resb	2*1024
@@ -79,6 +82,7 @@ global	hwint14
 global	hwint15
 global	hwinterupt
 
+global	sys_call
 
 global	restart
 
@@ -329,10 +333,10 @@ save:
 	push	es
 	push	fs
 	push	gs
-	mov	ax, ss
-	mov	ds, ax
-	mov	es, ax
-	mov	fs, ax
+	mov	bx, ss
+	mov	ds, bx
+	mov	es, bx
+	mov	fs, bx
 
 	mov	ebx, esp
 	
@@ -374,3 +378,35 @@ reenter:
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 系统调用
+;;;;;;;;;;;;;;;
+sys_call:
+xchg	bx, bx
+	call	save		; 下一条语句的 地址(EIP) 入栈
+	
+;	mov	al, EOI		; 发送EOI
+;	out	INT_M_CTL, al
+;	mov	ebx, sys_call_table
+;	mov	ebx, [sys_call_table + 4]
+	sti
+	call	[(4 * eax) + sys_call_table]
+;	mov	[esp + (4 + 8 - 1)*4], eax	; 放到 进程表 的 regs.eax 中, 这句不对！ 2011-7-9 14:15:01
+	mov	[ebx + (4 + 8 - 1)*4], eax	; 放到 进程表 的 regs.eax 中
+	cli
+
+	ret

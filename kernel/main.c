@@ -103,6 +103,7 @@ void TestA()
 	
 	while (1)
 	{
+		get_ticks();
 		disp_color_str("A", 0x0c);
 //		DispInt(i++);
 

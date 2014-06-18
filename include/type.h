@@ -108,5 +108,7 @@ typedef	struct p_task
 
 
 typedef	void (* irq_handler) (u32 irq);
+typedef	void *sys_call_handler;
+
 
 #endif

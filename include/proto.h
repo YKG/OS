@@ -46,6 +46,9 @@ void hwint12();
 void hwint13();
 void hwint14();
 void hwint15();
+
+void sys_call();
+
 //void hwinterupt();
 void enable_irq(u32 irq);
 void disable_irq(u32 irq);
@@ -61,5 +64,7 @@ void TestB();
 void TestC();
 void TestD();
 
+void sys_get_ticks();
+void get_ticks();
 
 #endif

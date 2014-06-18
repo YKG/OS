@@ -64,5 +64,6 @@
 
 
 	#define	NR_IRQ			16
+	#define	NR_SYS_CALL		10
 
 #endif

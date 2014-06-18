@@ -26,6 +26,7 @@ PROCESS		* p_proc_ready;
 u32			task_stack[TASK_STACK_SIZE];
 
 
-extern		irq_handler	irq_table[];
+extern		irq_handler			irq_table[];
+extern		sys_call_handler	sys_call_table[];
 
 #endif
