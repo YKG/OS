@@ -19,6 +19,7 @@ extern	DispInt
 extern	delay
 extern	k_reenter
 extern	p_proc_ready
+extern	proc_table
 
 [section .bss]
 resb	2*1024
@@ -91,19 +92,6 @@ csinit:
 
 xchg	bx, bx
 	jmp	SelectorFlatC:kernel_main
-
-	jmp	$
-	hlt
-
-
-;	ud2
-;	jmp	0x40:0
-	xor	bl, bl
-	div	bl
-	jmp	0x40:0
-	xor	eax, eax
-	push	eax
-	popfd
 
 	hlt
 
@@ -251,6 +239,16 @@ xchg	bx, bx
 
 	sti
 	
+	mov	eax, proc_table
+	cmp	eax, [p_proc_ready]
+	je	.a
+	mov	dword [p_proc_ready], proc_table
+	jmp	.e
+.a:
+	mov	dword [p_proc_ready], proc_table + 05ch
+	jmp	.e
+	
+.e:
 	push	clock_int_msg
 	call	DispString
 	add	esp, 4
@@ -263,6 +261,9 @@ xchg	bx, bx
 	dec	dword [ds:k_reenter]
 
 	mov	esp, [p_proc_ready]
+	lea	eax, [esp + TOP_REGS_OF_PROC]
+	mov	dword [tss + 4], eax	; esp0
+
 
 	pop	gs
 	pop	fs
@@ -353,67 +354,6 @@ hwinterupt:
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 这个部分是我自己写的，所有的设置都放在 这里了。 作者的
-; 放在 kernel_main.asm 里面
-restart_ykg:
-;restart:
-xchg	bx, bx
-	
-	mov	word [tss + 8], ss	; ss0
-	mov	dword eax, [ds:p_proc_ready]
-	add	eax, TOP_REGS_OF_PROC
-	mov	dword [tss + 4], eax	; esp0
-	
-
-	mov	dword ebx, [ds:p_proc_ready]
-	mov	word ax, [ds:ebx + SELECTOR_OF_PROC]	; LDT选择子
-	lldt	ax
-
-	
-	mov	ax, 8 + SA_RPL1 + SA_TIL
-	mov	ds, ax
-	mov	es, ax
-
-	push	eax					; SS
-	push	TopOfTaskStack
-	push	0 + SA_RPL1 + SA_TIL			; CS
-	push	TestA
-xchg	bx, bx
-	retf	
-
-
-
-
-
-
-;- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-; 这个是参照中断处理写的
-restartx:
-xchg	bx, bx
-	
-	mov	word [tss + 8], ss	; ss0
-	mov	dword eax, [ds:p_proc_ready]
-	add	eax, TOP_REGS_OF_PROC
-	mov	dword [tss + 4], eax	; esp0
-	
-
-	mov	dword ebx, [ds:p_proc_ready]
-	mov	word ax, [ds:ebx + SELECTOR_OF_PROC]	; LDT选择子
-	lldt	ax
-
-	
-	mov	ax, 8 + SA_RPL1 + SA_TIL
-	mov	ds, ax
-	mov	es, ax
-
-	push	eax					; SS
-	push	TopOfTaskStack
-	push	0 + SA_RPL1 + SA_TIL			; CS
-	push	TestA
-xchg	bx, bx
-	retf	
-
-
 
 restart:
 xchg	bx, bx

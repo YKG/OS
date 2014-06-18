@@ -4,6 +4,7 @@
 	#define GDT_SIZE		128
 	#define IDT_SIZE		256
 	#define LDT_SIZE		128
+	#define TASK_SIZE		128
 	#define PROC_SIZE		128
 	#define	TASK_STACK_SIZE	0x50000
 

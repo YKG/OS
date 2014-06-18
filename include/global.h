@@ -18,6 +18,7 @@ TSS			tss;
 
 u32			k_reenter;	/* 处理中断重入 */
 
+u32			task_table[TASK_SIZE];
 PROCESS		proc_table[PROC_SIZE];
 PROCESS		* p_proc_ready;
 

@@ -52,6 +52,7 @@ void spurious_irq(u32 vector_no);
 void restart();
 void delay();
 void TestA();
+void TestB();
 
 
 #endif
