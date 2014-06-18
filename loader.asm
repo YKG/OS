@@ -223,9 +223,9 @@ LABEL_START:
 
 
 
-	mov	ax, DestSeg
+	mov	ax, KernelSeg
 	mov	es, ax
-	mov	bx, DestOffset	; 设置es:bx 为 0x9000:0100
+	mov	bx, KernelOffset	; 设置es:bx 为 0x9000:0100
 
 	
 LABEL_SEARCH_IN_ROOT_DIR_LOOP:
@@ -318,9 +318,9 @@ xchg	bx, bx
 
 	mov	word ax, [es:di - 11 + 32 - 4 - 2]
 
-	mov	dx, DestSeg
+	mov	dx, KernelSeg
 	mov	es, dx
-	mov	bx, DestOffset	; 设置es:bx 为 0x9000:0100
+	mov	bx, KernelOffset	; 设置es:bx 为 0x9000:0100
 
 LABEL_GO_ON_LOADING:	
 
@@ -366,9 +366,6 @@ LABEL_LOADER_LOADED:
 	call	DispString
 	mov	si, di		; 保存下一个字符位置 ？？？
 	pop	di
-
-
-
 
 
 
@@ -533,9 +530,9 @@ int	21h
 ;#############################################################
 ;####### 神圣的一跳！ ########################################
 ;#############################################################
-;	jmp	DestSeg:DestOffset
+;	jmp	KernelSeg:KernelOffset
 xchg bx,bx
-	jmp	DestSeg:0400h
+	jmp	KernelSeg:0400h
 ;#############################################################
 ;#############################################################
 ;#############################################################
@@ -666,9 +663,9 @@ GetFATEntry:
 	and	dx, 1
 	
 	
-	mov	bx, (DestSeg - 0x100)
+	mov	bx, (KernelSeg - 0x100)
 	mov	es, bx
-	mov	bx, DestOffset	
+	mov	bx, KernelOffset	
 
 	push	ax
 	mov	ax, cx
@@ -732,8 +729,8 @@ cls:
 
 
 
-DestSeg			equ	08000h
-DestOffset		equ	0000h	; 注意！！这个偏移要和loader第一句org后面的偏移一致，否则不能工作！
+KernelSeg		equ	08000h
+KernelOffset		equ	0000h	
 RootFirstSectorNo	equ	19	; 根目录第一扇区号
 
 
@@ -880,6 +877,82 @@ call	Init8259A
 int	7fh
 int	80h
 sti
+
+
+
+
+
+
+LABEL_KERNEL_RELOAD:
+	;- - - - - - - - - - - - - - - - - - - - - - - - 
+	; 重新放置 KERNEL.BIN
+	xchg	bx, bx
+	xchg	bx, bx
+	xchg	bx, bx
+	xchg	bx, bx
+	xchg	bx, bx
+	
+	mov	ax, SelectorFlatRW
+	mov	ds, ax
+	mov	edi, KernelSeg * 010h + KernelOffset
+	mov	word ax, [ds:edi + 02ch]	; Program Header 个数
+	mov	cx, ax
+	mov	dword eax, [ds:edi + 01ch]	; 第一个Program Header 相对于文件头的偏移
+	add	eax, edi
+	mov	esi, eax			; ds:esi 指向Program Header 内存单元
+	
+KernelCopy:
+
+	test	ecx, ecx
+	jz	KernelCopyComplete	
+
+
+
+	mov	dword eax, [ds:esi]		; 检查类型
+	test	eax, eax
+	jz	OneProgramHeaderComplete	
+
+	mov	dword eax, [ds:esi + 4]		; 起始地址
+	add	eax, KernelSeg * 010h + KernelOffset
+	mov	ebp, eax
+	mov	dword edi, [ds:esi + 8]		; 目标地址
+	mov	dword edx, [ds:esi + 16]	; size
+
+OneProgramHeaderCopy:
+	test	edx, edx
+	jz	OneProgramHeaderComplete
+
+	mov	al, [ds:ebp]
+	mov	[ds:edi], al
+	inc	ebp
+	inc	edi
+
+	dec	edx
+	jmp	OneProgramHeaderCopy
+		
+
+OneProgramHeaderComplete:
+	add	esi, 0x20
+	dec	ecx
+	jmp	KernelCopy
+
+
+KernelCopyComplete:
+xchg	bx, bx
+mov	ax, 0
+
+
+
+jmp	SelectorFlatC:0x30400
+
+	jmp	$
+
+
+
+
+
+
+
 
 jmp	$
 xchg	bx, bx
