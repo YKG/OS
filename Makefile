@@ -12,7 +12,7 @@ ASM_KERNEL_ARGS	= -f elf
 CC_KERNEL_ARGS	= -I include/ -c -fno-builtin
 OBJS		= kernel/kernel.o kernel/start.o kernel/i8259.o kernel/protect.o lib/string.o \
 		lib/kliba.o kernel/main.o kernel/syscall.o kernel/proc.o kernel/clock.o \
-		kernel/global.o kernel/keyboard.o kernel/tty.o
+		kernel/global.o kernel/keyboard.o kernel/tty.o kernel/console.o
 LD_KERNEL_ARGS	= -s -Ttext 0x030400
 
 
@@ -55,34 +55,46 @@ $(LOADER): boot/loader.asm boot/include/pm.inc.asm boot/include/fat12hdr.inc.asm
 $(BOOTER): boot/boot.asm boot/include/fat12hdr.inc.asm
 	$(ASM) $(ASM_BOOTER_ARGS) -o $@ $<	
 
-kernel/start.o: kernel/start.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h
+kernel/start.o: kernel/start.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h \
+		include/keyboard.h  include/console.h include/tty.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
-kernel/protect.o: kernel/protect.c include/const.h include/type.h include/proto.h include/global.h include/proc.h
+kernel/protect.o: kernel/protect.c include/const.h include/type.h include/proto.h include/global.h include/proc.h \
+		include/keyboard.h  include/console.h include/tty.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
-kernel/i8259.o: kernel/i8259.c include/const.h include/type.h include/proto.h include/global.h include/proc.h
+kernel/i8259.o: kernel/i8259.c include/const.h include/type.h include/proto.h include/global.h include/proc.h \
+		include/keyboard.h  include/console.h include/tty.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
-kernel/main.o: kernel/main.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h
+kernel/main.o: kernel/main.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h \
+		include/keyboard.h  include/console.h include/tty.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
-kernel/proc.o: kernel/proc.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h
+kernel/proc.o: kernel/proc.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h \
+		include/keyboard.h  include/console.h include/tty.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
-kernel/clock.o: kernel/clock.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h
+kernel/clock.o: kernel/clock.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h \
+		include/keyboard.h  include/console.h include/tty.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
 kernel/keyboard.o: kernel/keyboard.c include/const.h include/type.h include/proto.h include/global.h \
-			include/string.h include/proc.h  include/keyboard.h include/keymap.h
+			include/string.h include/proc.h  include/keyboard.h include/keymap.h include/console.h include/tty.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
-kernel/global.o: kernel/global.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h
+kernel/global.o: kernel/global.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h \
+			include/console.h include/tty.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
 kernel/tty.o: kernel/tty.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h \
-		include/keyboard.h 
+		include/keyboard.h include/console.h include/tty.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
+
+kernel/console.o: kernel/console.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h \
+		include/keyboard.h  include/console.h include/tty.h
+	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
+
 
 kernel/kernel.o: kernel/kernel.asm
 	$(ASM) $(ASM_KERNEL_ARGS) -o $@ $<

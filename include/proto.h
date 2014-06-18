@@ -1,5 +1,6 @@
 #ifndef	_OS_PROTO_H_
 #define	_OS_PROTO_H_
+#endif
 
 void DispString(char *str);
 void disp_color_str(char *str, u8 color);
@@ -77,7 +78,6 @@ void init_clock();
 void disable_int();
 void enable_int();
 void task_tty();
-void in_process(u32 key);
+void in_process(TTY *p_tty, u32 key);
 
 
-#endif

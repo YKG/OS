@@ -16,7 +16,7 @@ u32			k_reenter;	/* 处理中断重入 */
 
 u32			n_tasks;
 extern		TASK		task_table[];
-extern		u32			NR_TASKS;
+//extern		u32			NR_TASKS;
 PROCESS		proc_table[PROC_SIZE];
 PROCESS		* p_proc_ready;
 
@@ -27,5 +27,10 @@ extern		irq_handler			irq_table[];
 extern		sys_call_handler	sys_call_table[];
 
 u32			ticks;
+
+
+extern		TTY					tty_table[];
+extern		CONSOLE				console_table[];
+int		nr_current_console;
 
 

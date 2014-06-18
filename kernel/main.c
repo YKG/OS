@@ -1,9 +1,12 @@
 #include "const.h"
 #include "type.h"
-#include "proto.h"
 #include "string.h"
-#include "global.h"
 #include "proc.h"
+#include "console.h"
+#include "tty.h"
+#include "global.h"
+#include "proto.h"
+
 
 void kernel_main()
 {

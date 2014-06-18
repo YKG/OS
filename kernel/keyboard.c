@@ -1,10 +1,13 @@
 #include "const.h"
 #include "type.h"
-#include "proto.h"
-#include "global.h"
 #include "proc.h"
 #include "keyboard.h"
 #include "keymap.h"
+#include "console.h"
+#include "tty.h"
+#include "global.h"
+#include "proto.h"
+
 
 static KB_INPUT	kb_in;
 static int	column;
@@ -61,7 +64,7 @@ void keyboard_handler(u32 irq)
 
 
 
-void keyboard_read()
+void keyboard_read(TTY * p_tty)
 {	
 	u8 scan_code;
 	u32	key = 0;			/* 这个很重要！调了几个小时！ */
@@ -183,7 +186,7 @@ void keyboard_read()
 			
 //				disp_int(key);
 			
-				in_process(key);
+				in_process(p_tty, key);
 			}
 		}
 	}

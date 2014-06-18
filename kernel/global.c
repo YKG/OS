@@ -1,9 +1,11 @@
 #include "const.h"
 #include "type.h"
-#include "proto.h"
 #include "string.h"
-#include "global.h"
 #include "proc.h"
+#include "console.h"
+#include "tty.h"
+#include "global.h"
+#include "proto.h"
 
 
 irq_handler			irq_table[NR_IRQ];
@@ -18,6 +20,10 @@ TASK				task_table[TASK_SIZE] = {
 					{(u32)TestC, 0x8000},
 					{(u32)TestD, 0x8000}
 					};
+
+
+TTY					tty_table[NR_CONSOLES];
+CONSOLE				console_table[NR_CONSOLES];
 
 
 

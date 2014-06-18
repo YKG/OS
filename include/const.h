@@ -79,9 +79,12 @@
 	#define	V_MEM_SIZE	0x8000	/* 32K: B8000H -> BFFFFH */
 
 
-
+	
 
 	#define	NR_IRQ			16
 	#define	NR_SYS_CALL		10
+
+
+	#define	NR_CONSOLES		3
 
 #endif

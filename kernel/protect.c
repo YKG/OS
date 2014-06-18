@@ -1,8 +1,11 @@
 #include "const.h"
 #include "type.h"
-#include "proto.h"
-#include "global.h"
 #include "proc.h"
+#include "console.h"
+#include "tty.h"
+#include "global.h"
+#include "proto.h"
+
 
 void Init_IDT_DESC(u8 vec_no, u8 type, void * handler, u8 privilege)
 {
