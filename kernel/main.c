@@ -62,18 +62,14 @@ void kernel_main()
 
 
 
-
-
 void delay() 
 {
 	int j, k;
 	
-
 	for (j = 0; j < 80; j++)
 	{
 		for (k = 0; k < 10000; k++)
-		{
-			
+		{			
 		}
 	}
 }
@@ -87,36 +83,35 @@ void TestA()
 		disp_int(get_ticks());
 		disp_color_str("A ", 0x0c);
 
-//		delay();
-		milli_delay(1000);
+		milli_delay(300);
 	}
 }
 
 
 void TestB()
 {
-	int i = 0;
+	int i = 0x1000;
 	
 	while (1)
 	{
-		disp_color_str("B", 0x0B);
-//		DispInt(i++);
+		disp_int(get_ticks());
+		disp_color_str("B ", 0x0E);
 
-		delay();
+		milli_delay(900);
 	}
 }
 
 
 void TestC()
 {
-	int i = 0;
+	int i = 0x2000;
 	
 	while (1)
 	{
-		disp_color_str("C", 0x0B);
-//		DispInt(i++);
+		disp_int(get_ticks());
+		disp_color_str("C ", 0x0A);
 
-		delay();
+		milli_delay(1500);
 	}
 }
 
