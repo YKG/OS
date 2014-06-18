@@ -1,15 +1,15 @@
 
 ASM		= nasm
-CC		= gcc -c
+CC		= gcc -c -g -fno-builtin -Wall 
 LD		= ld
 BOOTER		= boot/boot.bin
 LOADER		= boot/loader.bin
 KERNEL		= kernel/kernel.bin
 TARGETS		= $(BOOTER) $(LOADER) $(KERNEL)
 ASM_LOADER_ARGS	= -I boot/include/ # 后面的"/"务必加上！还得我花了好多时间！
-ASM_KERNEL_ARGS	= -f elf
+ASM_KERNEL_ARGS	= -g -f elf
 OBJS		= kernel/kernel.o kernel/start.o lib/string.o lib/kliba.o
-LD_KERNEL_ARGS	= -s -Ttext 0x030400
+LD_KERNEL_ARGS	= -g -Ttext 0x030400  # 把 -s 去掉才能用于gdb调试
 
 
 .PHONY: everything clean realclean image building
@@ -35,7 +35,9 @@ buildimg:
 	dd if=$(BOOTER) of=a.img bs=512 count=1 conv=notrunc
 	sudo mount -o loop a.img /mnt/floppy/
 	sudo cp -fv $(LOADER) /mnt/floppy/
-	sudo cp -fv $(KERNEL) /mnt/floppy/
+#	sudo cp -fv $(KERNEL) /mnt/floppy/
+	strip $(KERNEL) -o $(KERNEL).stripped 
+	sudo cp -fv $(KERNEL).stripped /mnt/floppy/
 	sudo umount /mnt/floppy/
 
 ###########################################################################

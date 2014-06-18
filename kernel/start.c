@@ -1,16 +1,37 @@
 #define GDT_SIZE		128
-#define IDT_SIZE		256
+#define	IDT_SIZE		256
 
-#define	DA_386CGate		0x8C
-#define	DA_386IGate		0x8E
-#define	DA_386TGate		0x8F
 
-#define	DA_DPL0			0x0
-#define	DA_DPL1			0x1
-#define	DA_DPL2			0x2
-#define	DA_DPL3			0x3
 
-#define	SelectorFlatC	0x8
+/* 中断向量 */
+#define	INT_VECTOR_DIVIDE		0x0
+#define	INT_VECTOR_DEBUG		0x1
+#define	INT_VECTOR_NMI			0x2
+#define	INT_VECTOR_BREAKPOINT		0x3
+#define	INT_VECTOR_OVERFLOW		0x4
+#define	INT_VECTOR_BOUNDS		0x5
+#define	INT_VECTOR_INVAL_OP		0x6
+#define	INT_VECTOR_COPROC_NOT		0x7
+#define	INT_VECTOR_DOUBLE_FAULT		0x8
+#define	INT_VECTOR_COPROC_SEG		0x9
+#define	INT_VECTOR_INVAL_TSS		0xA
+#define	INT_VECTOR_SEG_NOT		0xB
+#define	INT_VECTOR_STACK_FAULT		0xC
+#define	INT_VECTOR_PROTECTION		0xD
+#define	INT_VECTOR_PAGE_FAULT		0xE
+#define	INT_VECTOR_COPROC_ERR		0x10
+
+#define	DA_386IGate		0x8E	/* 386 中断门类型值			*/
+
+
+
+#define	PRIVILEGE_KRNL	0
+#define	PRIVILEGE_USER	3
+
+
+
+
+
 
 
 
@@ -18,70 +39,87 @@
 typedef	unsigned char	u8;
 typedef	unsigned short	u16;
 typedef	unsigned int	u32;
+typedef	void	(*int_handler)();
 
-typedef	struct p_descriptor
+
+typedef struct s_descriptor		/* 共 8 个字节 */
 {
-	u16	desc_limit_low;
-	u16	desc_base_low;
-	u8	desc_base_mid;
-	u8	desc_attr_low;
-	u8	desc_limit_attr_high; /* limit low 4bit   attr high 4bit*/
-	u8	desc_base_high;
-} DESCRIPTOR;
+	u16	limit_low;		/* Limit */
+	u16	base_low;		/* Base */
+	u8	base_mid;		/* Base */
+	u8	attr1;			/* P(1) DPL(2) DT(1) TYPE(4) */
+	u8	limit_high_attr2;	/* G(1) D(1) 0(1) AVL(1) LimitHigh(4) */
+	u8	base_high;		/* Base */
+}DESCRIPTOR;
 
 
-typedef	struct p_gate
+
+typedef struct s_gate
 {
-	u16	gate_offset_low;
-	u16	gate_selector;
-	u8	gate_attr_low;
-	u8	gate_attr_high;
-	u16	gate_offset_high;
-} GATE;
+	u16	offset_low;	/* Offset Low */
+	u16	selector;	/* Selector */
+	u8	dcount;		/* 该字段只在调用门描述符中有效。如果在利用
+				   调用门调用子程序时引起特权级的转换和堆栈
+				   的改变，需要将外层堆栈中的参数复制到内层
+				   堆栈。该双字计数字段就是用于说明这种情况
+				   发生时，要复制的双字参数的数量。*/
+	u8	attr;		/* P(1) DPL(2) DT(1) TYPE(4) */
+	u16	offset_high;	/* Offset High */
+}GATE;
 
 
 
 
-
-u32			disp_pos;
 u8			gdt_ptr[6];
-u8			idt_ptr[6];
 DESCRIPTOR	gdt[GDT_SIZE];
+
+
+u8			idt_ptr[6];
 GATE		idt[IDT_SIZE];
+
+int disp_pos;
+
+
+
+void init_idt_desc(unsigned char vector, u8 desc_type,
+			   int_handler handler, unsigned char privilege);
+/* 中断处理函数 */
+void	divide_error();
+void	single_step_exception();
+void	nmi();
+void	breakpoint_exception();
+void	overflow();
+void	bounds_check();
+void	inval_opcode();
+void	copr_not_available();
+void	double_fault();
+void	copr_seg_overrun();
+void	inval_tss();
+void	segment_not_present();
+void	stack_exception();
+void	general_protection();
+void	page_fault();
+void	copr_error();
+
+void	exception_handler(int vec_no,int err_code,int eip,int cs,int eflags);
+void	init_prot();
+
+ char * itoa(char * str, int num);
+ void disp_int(int input);
+
+
+
+
 
 
 void * MemCopy(void *dest, void *src, int size);
 void DispString();
-void Init_IDT_DESC(u8 vec_no, u8 type, void * handler, u8 privilege);
-void Init_IDT();
-void Init8259A();
-void divide_error();
-void debug_exception();
-void nmi();
-void overflow_exception();
-void breakpoint_exception();
-void bound_exception();
-void undefine_opcode_exception();
-void no_match_coprocessor_exception();
-void double_fault_exception();
-void coprocessor_segment_overrun_exception();
-void invalid_tSS_exception();
-void segment_not_present_exception();
-void stack_segment_sault_exception();
-void general_protection_exception();
-void page_fault_exception();
-void reserved_exception();
-void math_fault_exception();
-void alignment_check_exception();
-void machine_check_exception();
-void smid_floating_point_exception();
-
-
 
 void cstart()
 {	
 	u16 * gdt_limit = (u16 *)(&gdt_ptr[0]);
 	u32 * gdt_base  = (u32 *)(&gdt_ptr[2]);
+
 	u16 * idt_limit = (u16 *)(&idt_ptr[0]);
 	u32 * idt_base  = (u32 *)(&idt_ptr[2]);
 
@@ -92,126 +130,222 @@ void cstart()
 
 	*gdt_limit = GDT_SIZE*(sizeof(DESCRIPTOR)) - 1;
 	*gdt_base  = (u32)gdt;
+	
 	*idt_limit = IDT_SIZE*(sizeof(GATE)) - 1;
 	*idt_base  = (u32)idt;
+
+
+
+
+	DispString("\n\n\nHello, world! By YKG....");
+	disp_int(disp_pos);
+	DispString("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+				"======== cstart =========");
+	
 	
 
-	DispString("\n\nHello, world! By YKG\n");
-	DispInt(1);
-	DispString("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
-				"======== cstart =========\n");
+	 init_prot();
 
-	DispInt(divide_error);
-	DispString("  ");
-	DispInt(Init_IDT);
-
-
-	Init_IDT();
 }
 
 
 
 
 
-void exception_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags)
-{
-	int i;	
 
-	char *msg[] = {
-		"#DE Divide Error",
-		"#DB RESERVED",
-		"--  NMI Interrupt",
-		"#BP Breakpoint",
-		"#OF Overflow",
-		"#BR BOUND Range Exceeded",
-		"#UD Invalid Opcode (Undefined Opcode)",
-		"#NM Device Not Available (No Math Coprocessor)",
-		"#DF Double Fault",
-		"    Coprocessor Segment Overrun (reserved)",
-		"#TS Invalid TSS",
-		"#NP Segment Not Present",
-		"#SS Stack-Segment Fault",
-		"#GP General Protection",
-		"#PF Page Fault",
-		"--  (Intel reserved. Do not use.)",
-		"#MF x87 FPU Floating-Point Error (Math Fault)",
-		"#AC Alignment Check",
-		"#MC Machine Check",
-		"#XF SIMD Floating-Point Exception"		
+
+
+
+
+
+
+
+ void init_prot()
+{
+//	init_8259A();
+
+	// 全部初始化成中断门(没有陷阱门)
+	init_idt_desc(INT_VECTOR_DIVIDE,	DA_386IGate,
+		      divide_error,		PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_DEBUG,		DA_386IGate,
+		      single_step_exception,	PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_NMI,		DA_386IGate,
+		      nmi,			PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_BREAKPOINT,	DA_386IGate,
+		      breakpoint_exception,	PRIVILEGE_USER);
+
+	init_idt_desc(INT_VECTOR_OVERFLOW,	DA_386IGate,
+		      overflow,			PRIVILEGE_USER);
+
+	init_idt_desc(INT_VECTOR_BOUNDS,	DA_386IGate,
+		      bounds_check,		PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_INVAL_OP,	DA_386IGate,
+		      inval_opcode,		PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_COPROC_NOT,	DA_386IGate,
+		      copr_not_available,	PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_DOUBLE_FAULT,	DA_386IGate,
+		      double_fault,		PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_COPROC_SEG,	DA_386IGate,
+		      copr_seg_overrun,		PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_INVAL_TSS,	DA_386IGate,
+		      inval_tss,		PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_SEG_NOT,	DA_386IGate,
+		      segment_not_present,	PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_STACK_FAULT,	DA_386IGate,
+		      stack_exception,		PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_PROTECTION,	DA_386IGate,
+		      general_protection,	PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_PAGE_FAULT,	DA_386IGate,
+		      page_fault,		PRIVILEGE_KRNL);
+
+	init_idt_desc(INT_VECTOR_COPROC_ERR,	DA_386IGate,
+		      copr_error,		PRIVILEGE_KRNL);
+}
+
+
+
+
+void init_idt_desc(unsigned char vector, u8 desc_type,
+			  int_handler handler, unsigned char privilege)
+{
+	GATE *	p_gate	= &idt[vector];
+	u32	base	= (u32)handler;
+	p_gate->offset_low	= base & 0xFFFF;
+	p_gate->selector	= 8;	//SELECTOR_KERNEL_CS
+	p_gate->dcount		= 0;
+	p_gate->attr		= desc_type | (privilege << 5);
+	p_gate->offset_high	= (base >> 16) & 0xFFFF;
+}
+
+
+
+
+
+void exception_handler(int vec_no,int err_code,int eip,int cs,int eflags)
+{
+	int i;
+	int text_color = 0x74; /* 灰底红字 */
+
+	char * err_msg[] = {"#DE Divide Error",
+			    "#DB RESERVED",
+			    "--  NMI Interrupt",
+			    "#BP Breakpoint",
+			    "#OF Overflow",
+			    "#BR BOUND Range Exceeded",
+			    "#UD Invalid Opcode (Undefined Opcode)",
+			    "#NM Device Not Available (No Math Coprocessor)",
+			    "#DF Double Fault",
+			    "    Coprocessor Segment Overrun (reserved)",
+			    "#TS Invalid TSS",
+			    "#NP Segment Not Present",
+			    "#SS Stack-Segment Fault",
+			    "#GP General Protection",
+			    "#PF Page Fault",
+			    "--  (Intel reserved. Do not use.)",
+			    "#MF x87 FPU Floating-Point Error (Math Fault)",
+			    "#AC Alignment Check",
+			    "#MC Machine Check",
+			    "#XF SIMD Floating-Point Exception"
 	};
-		
-	/* 清理屏幕前 5 行 */	
+
+	/* 通过打印空格的方式清空屏幕的前五行，并把 disp_pos 清零 */
 	disp_pos = 0;
-	for (i = 0; i < 80*5; i++)
-	{
+	for(i=0;i<80*5;i++){
+//		disp_str(" ");
 		DispString(" ");
 	}
 	disp_pos = 0;
 
+	disp_int(vec_no);
+	DispString("\n");
+	disp_int(err_code);
+	DispString("\n");
+	disp_int(eip);
+	DispString("\n");
+	disp_int(cs);
+	DispString("\n");
+	disp_int(eflags);
+	DispString("\n");
 
-	DispString("vec_no:   ");
-	DispInt(vec_no);
-	DispString("  ");
-    DispString(msg[vec_no]);
-	DispString("\nerr_code: ");
-	DispInt(err_code);
-	DispString("\neip:      ");
-	DispInt(eip);
-	DispString("\ncs:       ");
-	DispInt(cs);
-	DispString("\neflags:   ");
-	DispInt(eflags);
+
+
+	disp_color_str("Exception! --> ", text_color);
+	disp_color_str(err_msg[vec_no], text_color);
+	disp_color_str("\n\n", text_color);
+	disp_color_str("EFLAGS:", text_color);
+	disp_int(eflags);
+	disp_color_str("CS:", text_color);
+	disp_int(cs);
+	disp_color_str("EIP:", text_color);
+	disp_int(eip);
+
+	if(err_code != 0xFFFFFFFF){
+		disp_color_str("Error code:", text_color);
+		disp_int(err_code);
+	}
 }
 
 
 
-void Init_IDT_DESC(u8 vec_no, u8 type, void * handler, u8 privilege)
+
+
+
+
+
+
+
+
+ char * itoa(char * str, int num)
 {
-	GATE *gate;
+	char *	p = str;
+	char	ch;
+	int	i;
+	int	flag = 0;
 
-	gate = &idt[vec_no];
-	gate->gate_offset_low	= (u16)((u32)handler);
-	gate->gate_selector		= SelectorFlatC;	/* CS */
-	gate->gate_attr_low		= privilege;
-	gate->gate_attr_high	= type;				/* 0x8E 中断门 */
-	gate->gate_offset_high	= (u16)((u32)handler >> 16);
+	*p++ = '0';
+	*p++ = 'x';
+
+	if(num == 0){
+		*p++ = '0';
+	}
+	else{	
+		for(i=28;i>=0;i-=4){
+			ch = (num >> i) & 0xF;
+			if(flag || (ch > 0)){
+				flag = 1;
+				ch += '0';
+				if(ch > '9'){
+					ch += 7;
+				}
+				*p++ = ch;
+			}
+		}
+	}
+
+	*p = 0;
+
+	return str;
 }
 
-
-void Init_IDT()
+/*======================================================================*
+                               disp_int
+ *======================================================================*/
+ void disp_int(int input)
 {
-	Init8259A();
-
-	Init_IDT_DESC(0x00, DA_386IGate,				      divide_error    , DA_DPL0);
-	Init_IDT_DESC(0x01, DA_386IGate,				       debug_exception, DA_DPL0);
-	Init_IDT_DESC(0x02, DA_386IGate,				         nmi          , DA_DPL0);
-	Init_IDT_DESC(0x03, DA_386IGate,				    overflow_exception, DA_DPL0);
-	Init_IDT_DESC(0x04, DA_386IGate,				  breakpoint_exception, DA_DPL0);
-	Init_IDT_DESC(0x05, DA_386IGate,                       bound_exception, DA_DPL0);
-	Init_IDT_DESC(0x06, DA_386IGate,             undefine_opcode_exception, DA_DPL0);
-	Init_IDT_DESC(0x07, DA_386IGate,        no_match_coprocessor_exception, DA_DPL0);
-	Init_IDT_DESC(0x08, DA_386IGate,                double_fault_exception, DA_DPL0);
-	Init_IDT_DESC(0x09, DA_386IGate, coprocessor_segment_overrun_exception, DA_DPL0);
-	Init_IDT_DESC(0x0a, DA_386IGate,                 invalid_tSS_exception, DA_DPL0);
-	Init_IDT_DESC(0x0b, DA_386IGate,		 segment_not_present_exception, DA_DPL0);
-	Init_IDT_DESC(0x0c, DA_386IGate,		 stack_segment_sault_exception, DA_DPL0);
-	Init_IDT_DESC(0x0d, DA_386IGate,		  general_protection_exception, DA_DPL0);
-	Init_IDT_DESC(0x0e, DA_386IGate,		          page_fault_exception, DA_DPL0);
-	Init_IDT_DESC(0x0f, DA_386IGate,		            reserved_exception, DA_DPL0);
-	Init_IDT_DESC(0x10, DA_386IGate,		          math_fault_exception, DA_DPL0);
-	Init_IDT_DESC(0x11, DA_386IGate,		     alignment_check_exception, DA_DPL0);
-	Init_IDT_DESC(0x12, DA_386IGate,		       machine_check_exception, DA_DPL0);
-	Init_IDT_DESC(0x13, DA_386IGate,		 smid_floating_point_exception, DA_DPL0);
+	char output[16];
+	itoa(output, input);
+//	disp_str(output);
+	DispString(output);
 }
-
-
-
-
-
-
-
-
-
-
-
-

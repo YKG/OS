@@ -1,5 +1,9 @@
+SelectorFlatRW	equ	16
+SelectorVideo	equ	24
+
 [section .text]
 global	MemCopy
+
 
 
 ;==== MemCopy ================================
@@ -15,6 +19,8 @@ MemCopy:
 	mov	esi, [esp + 24]		; 源地址
 	mov	ecx, [esp + 28]		; 长度
 .nextbyte:
+	mov	ax, SelectorFlatRW
+	mov	ds, ax
 	mov	al, [ds:esi]
 	mov	[ds:edi], al
 	inc	esi
