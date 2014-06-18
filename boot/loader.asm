@@ -48,7 +48,7 @@ LABEL_GDT:
 	GDT_DESC:	Descriptor	0, 0, 0
 	;Normal_DESC:	Descriptor	0, 0ffffh, DA_DRW
 	FlatC_DESC:	Descriptor	0, 0ffffh, DA_C | DA_32 | DA_LIMIT_4K
-	FlatRW_DESC:	Descriptor	0, 0ffffh, DA_DRW| DA_32 |DA_LIMIT_4K	; 把我害死了 DA_32 ！
+	FlatRW_DESC:	Descriptor	0, 0ffffh, DA_DRW| DA_32 |DA_LIMIT_4K
 	VIDEO_DESC:	Descriptor	0b8000h, 0ffffh, DA_DRW
 	Code32_DESC:	Descriptor	0, Code32Len - 1, DA_CR + DA_32 ;DA_CR, 不能是DA_C
 	Code16_DESC:	Descriptor	0, 0ffffh, DA_C	; 一定要注意段界限，保证为0ffffh	
