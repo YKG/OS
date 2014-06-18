@@ -9,6 +9,8 @@ RETADDR_AT_PROC_REGS	equ	12*4	; retaddr在PROCESS.REG中的偏移，即以前的
 EOI			equ	020h
 INT_M_CTL		equ	020h	; 主8259A Controller
 INT_M_CTLMASK		equ	021h	; 主8259A Mask
+INT_S_CTL		equ	0A0h	; 从8259A Controller
+INT_S_CTLMASK		equ	0A1h	; 从8259A Mask
 
 
 
@@ -221,17 +223,17 @@ exception:
 
 
 
-
-%macro hwint_master	1
-	
+; 中断处理
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 主 8259A
+;;;;;;;;;;;;;;;
+%macro hwint_master	1	
 	call	save		; 下一条语句的 地址(EIP) 入栈
 	
 	in	al, INT_M_CTLMASK
 	or	al, 1 << %1 	; 屏蔽时钟中断
 	out	INT_M_CTLMASK, al
 
-
-;	inc	byte [gs:0]
 	mov	al, EOI		; 发送EOI
 	out	INT_M_CTL, al
 	
@@ -241,14 +243,82 @@ exception:
 	add	esp, 4
 	cli
 
-
 	in	al, INT_M_CTLMASK
 	and	al, ~(1 << %1)	; 开启时钟中断
 	out	INT_M_CTLMASK, al
 
 	ret
-
 %endmacro
+
+
+
+hwint00:
+	hwint_master	0
+hwint01:
+	hwint_master	1
+hwint02:
+	hwint_master	2
+hwint03:
+	hwint_master	3
+hwint04:
+	hwint_master	4
+hwint05:
+	hwint_master	5
+hwint06:
+	hwint_master	6
+hwint07:
+	hwint_master	7
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 从 8259A
+;;;;;;;;;;;;;;;
+%macro hwint_slave	1	
+	call	save		; 下一条语句的 地址(EIP) 入栈
+	
+	in	al, INT_S_CTLMASK
+	or	al, 1 << (%1 - 8) ; 屏蔽时钟中断
+	out	INT_S_CTLMASK, al
+
+	mov	al, EOI		; 发送EOI
+	out	INT_M_CTL, al
+	
+	sti
+	push	%1		; int 0
+	call	[irq_table + 4 * %1]
+	add	esp, 4
+	cli
+
+	in	al, INT_S_CTLMASK
+	and	al, ~(1 << (%1 - 8))	; 开启时钟中断
+	out	INT_S_CTLMASK, al
+
+	ret
+%endmacro
+
+
+hwint08:
+	hwint_slave	8
+hwint09:
+	hwint_slave	9
+hwint10:
+	hwint_slave	10
+hwint11:
+	hwint_slave	11
+hwint12:
+	hwint_slave	12
+hwint13:
+	hwint_slave	13
+hwint14:
+	hwint_slave	14
+hwint15:
+	hwint_slave	15
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
 
 
 
@@ -278,108 +348,6 @@ save:
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 外部中断
-
-hwint00:
-	hwint_master	0
-
-xchg	bx, bx
-	
-	call	save		; 下一条语句的 地址(EIP) 入栈
-	
-
-	in	al, INT_M_CTLMASK
-	or	al, 1		; 屏蔽时钟中断
-	out	INT_M_CTLMASK, al
-
-
-	inc	byte [gs:0]
-	mov	al, EOI		; 发送EOI
-	out	INT_M_CTL, al
-	
-	sti
-	push	0		; int 0
-	call	clock_handler
-	add	esp, 4
-	cli
-
-
-	in	al, INT_M_CTLMASK
-	and	al, 0FEh	; 开启时钟中断
-	out	INT_M_CTLMASK, al
-
-	ret
-
-
-hwint01:
-	push	1		; int 1
-	jmp	hwinterupt
-
-hwint02:
-	push	2
-	jmp	hwinterupt
-
-hwint03:
-	push	3
-	jmp	hwinterupt
-
-hwint04:
-	push	4
-	jmp	hwinterupt
-
-hwint05:
-	push	5
-	jmp	hwinterupt
-
-hwint06:
-	push	6
-	jmp	hwinterupt
-
-hwint07:
-	push	7
-	jmp	hwinterupt
-
-hwint08:
-	push	8
-	jmp	hwinterupt
-
-hwint09:
-	push	9
-	jmp	hwinterupt
-
-hwint10:
-	push	10
-	jmp	hwinterupt
-
-hwint11:
-	push	11
-	jmp	hwinterupt
-
-hwint12:
-	push	12
-	jmp	hwinterupt
-
-hwint13:
-	push	13
-	jmp	hwinterupt
-
-hwint14:
-	push	14
-	jmp	hwinterupt
-
-hwint15:
-	push	15		; int 15
-	jmp	hwinterupt
-
-
-
-hwinterupt:
-	call	spurious_irq
-	add	esp, 4
-
-	iretd			; 不要写成 ret 了 !
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 
 
@@ -404,35 +372,5 @@ reenter:
 
 	iretd
 	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 这是原来的 restart ， 修改后的见上
-;- - - - - - - - - - - - - - - - - -
-;
-;restart:
-;xchg	bx, bx
-;	mov	esp, [p_proc_ready]
-;	lea	eax, [esp + TOP_REGS_OF_PROC]
-;	mov	dword [tss + 4], eax	; esp0
-;	
-;	mov	ax, [esp + SELECTOR_OF_PROC]
-;	lldt	ax
-;
-;
-;	pop	gs
-;	pop	fs
-;	pop	es
-;	pop	ds
-;	popad
-;	
-;	add	esp, 4		; 越过 error_code
-;
-;	iretd
-;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-
-[section .data]
-clock_int_msg:	db	'^', 0

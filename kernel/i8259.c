@@ -45,9 +45,6 @@ void spurious_irq(u32 vector_no)
 	DispString("\n");
 
 	keyboardint_count++;			/* 为啥不更新呢。。! 因为之前没发送 EOI, 外加硬件中断使用 ret 返回了，应该是 iretd */
-
-//	out_byte(PORT_M_ICW1, 0x20);	/* 发送 EOI, port: 0x20, value: 0x20 */
-//	delay();
 }
 
 
