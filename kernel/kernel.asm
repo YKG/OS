@@ -4,7 +4,8 @@ SelectorFlatC	equ	8
 extern	cstart
 extern	gdt_ptr
 extern	idt_ptr
-extern  exception_handler
+extern	exception_handler
+
 
 [section .bss]
 resb	2*1024
@@ -13,25 +14,27 @@ TopOfStack:
 
 [section .text]
 global	_start
-
-
-global	divide_error
-global	single_step_exception
-global	nmi
+global	Init8259A
+global	divide_error    
+global	debug_exception
+global	nmi          
+global	overflow_exception
 global	breakpoint_exception
-global	overflow
-global	bounds_check
-global	inval_opcode
-global	copr_not_available
-global	double_fault
-global	copr_seg_overrun
-global	inval_tss
-global	segment_not_present
-global	stack_exception
-global	general_protection
-global	page_fault
-global	copr_error
-
+global	bound_exception
+global	undefine_opcode_exception
+global	no_match_coprocessor_exception
+global	double_fault_exception
+global	coprocessor_segment_overrun_exception
+global	invalid_tSS_exception
+global	segment_not_present_exception
+global	stack_segment_sault_exception
+global	general_protection_exception
+global	page_fault_exception
+global	reserved_exception
+global	math_fault_exception
+global	alignment_check_exception
+global	machine_check_exception
+global	smid_floating_point_exception
 
 
 _start:
@@ -41,23 +44,17 @@ xchg	bx, bx
 	sgdt	[gdt_ptr]
 	call	cstart
 	lgdt	[gdt_ptr]
-	
 	lidt	[idt_ptr]
-
+	
 	jmp	SelectorFlatC:csinit
 
 csinit:
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 大概从昨天晚饭前开始找问题，现在(2011-7-3 11:29:07)才终于知道哪里出问题了。
-; 我发现进入异常处理的时候，入栈是按这个栈(ss:sp) 而不是 (ss:esp) !!!!!!!!!
-; 但还不知道原因，但至少知道它push到哪里了，之前一直在ss:esp里面找，那个晕啊！
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-xchg bx, bx
-	jmp 0x40:0
-	ud2
-
-		
-
+xchg	bx, bx
+;	ud2
+;	jmp	0x40:0
+	xor	bl, bl
+	div	bl
+	jmp	0x40:0
 	xor	eax, eax
 	push	eax
 	popfd
@@ -67,82 +64,170 @@ xchg bx, bx
 
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 初始化 8259A 
 
-; 中断和异常 -- 异常
+	;==== Init8259A ==============================
+	Init8259A:
+		mov	al, 011h
+		out	020h, al
+		call	io_delay
+
+		out	0a0h, al
+		call	io_delay
+
+
+		mov	al, 020h
+		out	021h, al
+		call	io_delay
+
+		mov	al, 028h
+		out	0a1h, al
+		call	io_delay
+
+
+		mov	al, 004h
+		out	021h, al
+		call	io_delay
+
+		mov	al, 002h
+		out	0a1h, al
+		call	io_delay
+
+
+		mov	al, 001h
+		out	021h, al
+		call	io_delay
+
+		out	0a1h, al
+		call	io_delay
+
+		; - - - - - - - -
+		mov	al, 11111110b
+		out	021h, al
+		call	io_delay
+
+		mov	al, 11111111b
+		out	0a1h, al
+		call	io_delay
+
+		ret
+
+		;---------------
+		io_delay:
+			nop
+			nop
+			nop
+			nop
+		ret
+	;==== Init8259A  End =========================
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 异常处理
+
 divide_error:
-	push	0xFFFFFFFF	; no err code
-	push	0		; vector_no	= 0
+	push	0FFFFFFFFh	
+	push	0		; 中断向量号 
 	jmp	exception
-single_step_exception:
-	push	0xFFFFFFFF	; no err code
-	push	1		; vector_no	= 1
+
+debug_exception:
+	push	0FFFFFFFFh
+	push	1
 	jmp	exception
 nmi:
-	push	0xFFFFFFFF	; no err code
-	push	2		; vector_no	= 2
+	push	0FFFFFFFFh
+	push	2
+	jmp	exception
+overflow_exception:
+	push	0FFFFFFFFh
+	push	3
 	jmp	exception
 breakpoint_exception:
-	push	0xFFFFFFFF	; no err code
-	push	3		; vector_no	= 3
+	push	0FFFFFFFFh
+	push	4
 	jmp	exception
-overflow:
-	push	0xFFFFFFFF	; no err code
-	push	4		; vector_no	= 4
+
+bound_exception:
+	push	0FFFFFFFFh
+	push	5
 	jmp	exception
-bounds_check:
-	push	0xFFFFFFFF	; no err code
-	push	5		; vector_no	= 5
+
+undefine_opcode_exception:
+	push	0FFFFFFFFh
+	push	6
 	jmp	exception
-inval_opcode:
-	push	0xFFFFFFFF	; no err code
-	push	6		; vector_no	= 6
+
+no_match_coprocessor_exception:
+	push	0FFFFFFFFh
+	push	7
 	jmp	exception
-copr_not_available:
-	push	0xFFFFFFFF	; no err code
-	push	7		; vector_no	= 7
+
+double_fault_exception:
+	push	8		; #DF 有 Error Code
 	jmp	exception
-double_fault:
-	push	8		; vector_no	= 8
+
+coprocessor_segment_overrun_exception:
+	push	0FFFFFFFFh
+	push	9
 	jmp	exception
-copr_seg_overrun:
-	push	0xFFFFFFFF	; no err code
-	push	9		; vector_no	= 9
+
+invalid_tSS_exception:		; vector=0x0a
+	push	10		; #TS 有 Error Code
 	jmp	exception
-inval_tss:
-	push	10		; vector_no	= A
+
+segment_not_present_exception:	; vector=0x0b
+	push	11		; #NP 有 Error Code
 	jmp	exception
-segment_not_present:
-	push	11		; vector_no	= B
+
+stack_segment_sault_exception:	; vector=0x0c
+	push	12		; #SS 有 Error Code
 	jmp	exception
-stack_exception:
-	push	12		; vector_no	= C
+
+general_protection_exception:	; vector=0x0d
+	push	13		; #GP 有 Error Code
 	jmp	exception
-general_protection:
-	push	13		; vector_no	= D
-;	mov	eax, 012345678h
-;	push	eax
-;	mov	eax, 0ffffffffh
-;	push	eax
-;	mov	eax, esp
-;	push	eax
-;	xor	eax, eax
-;	mov	ax, ss
-;	push	eax
-;	mov	eax, 0ffffffffh
-;	push	eax
+
+page_fault_exception:		; vector=0x0e
+	push	14		; #PF 有 Error Code
 	jmp	exception
-page_fault:
-	push	14		; vector_no	= E
+
+reserved_exception:
+	push	0FFFFFFFFh
+	push	15
 	jmp	exception
-copr_error:
-	push	0xFFFFFFFF	; no err code
-	push	16		; vector_no	= 10h
+
+math_fault_exception:
+	push	0FFFFFFFFh
+	push	16
 	jmp	exception
+
+alignment_check_exception:	; vector=0x11
+	push	17		; #AC 有 Error Code
+	jmp	exception
+
+machine_check_exception:
+	push	0FFFFFFFFh
+	push	18
+	jmp	exception
+
+smid_floating_point_exception:
+	push	0FFFFFFFFh
+	push	19
+	jmp	exception
+
+
+
 
 exception:
 	call	exception_handler
-	add	esp, 4*2	; 让栈顶指向 EIP，堆栈中从顶向下依次是：EIP、CS、EFLAGS
+	add	esp, 4*2
+
 	hlt
+
+
 
 
 
