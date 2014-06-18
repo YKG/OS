@@ -12,12 +12,16 @@ Code16_DESC:	Descriptor	0, 0ffffh, DA_C
 VIDEO_DESC:	Descriptor	0b8000h, 0ffffh, DA_DRW
 Normal_DESC:	Descriptor	0, 0ffffh, DA_DRW
 LDT_DESC:	Descriptor	0, LDT_LEN - 1, DA_LDT
+Code_GATE_DESC:	Descriptor	0, CodeGateLen - 1, DA_C + DA_32
+GATE_DESC:	Gate		SelectorGate, 0, 0, DA_386CGate + DA_DPL0
 
 SelectorCode32	equ	Code32_DESC - GDT_DESC
 SelectorCode16	equ	Code16_DESC - GDT_DESC
 SelectorVideo	equ	VIDEO_DESC - GDT_DESC
 SelectorNormal	equ	Normal_DESC - GDT_DESC
 SelectorLDT	equ	LDT_DESC - GDT_DESC
+SelectorGate	equ	Code_GATE_DESC - GDT_DESC
+SelectorCallGate	equ	GATE_DESC - GDT_DESC
 
 GdtLen	equ	$ - $$
 GdtPtr	dw	GdtLen - 1
@@ -25,6 +29,26 @@ GdtPtr	dw	GdtLen - 1
 
 SP_IN_REAL_MODE:
 	dw	0
+
+
+
+[SECTION .gate]
+[BITS 32]
+LABEL_SEG_GATE:
+mov	ax, SelectorVideo
+mov	gs, ax
+
+mov	edi, (80*7 + 79)*2
+mov	ah, 0ch
+mov	al, 'C'
+mov	[gs:edi], ax
+
+retf
+
+CodeGateLen	equ	$ - $$
+
+
+
 
 [SECTION .16]
 [BITS	16]
@@ -46,6 +70,16 @@ mov	[Code32_DESC + 2], ax
 shr	eax, 16
 mov	[Code32_DESC + 4], al
 mov	[Code32_DESC + 7], ah
+
+
+xor	eax, eax
+mov	ax, cs
+shl	eax, 4
+add	eax, LABEL_SEG_GATE
+mov	[Code_GATE_DESC + 2], ax
+shr	eax, 16
+mov	[Code_GATE_DESC + 4], al
+mov	[Code_GATE_DESC + 7], ah
 
 
 xor	eax, eax
@@ -193,6 +227,8 @@ mov	edi, (80*14 + 79)*2
 mov	ah, 0ch
 mov	al, 'L'
 mov	[gs:edi], ax
+
+call	SelectorCallGate:0	
 
 jmp	SelectorCode16:0
 jmp	$

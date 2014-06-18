@@ -1,5 +1,5 @@
-nasm -o ldt.com ldt.asm
+nasm -o gate.com gate.asm
 sudo mount -o loop a.img /mnt/floppy
-sudo cp ldt.com /mnt/floppy
+sudo cp gate.com /mnt/floppy
 sudo umount /mnt/floppy
 
