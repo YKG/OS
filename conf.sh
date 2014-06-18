@@ -1,4 +1,7 @@
-nasm -f elf -g -o foo.o foo.asm
-gcc -c -g -o bar.o bar.c
-ld -g -o foobar foo.o bar.o
+#nasm boot.asm -o boot.bin
+#dd if=boot.bin of=a.img bs=512 count=1 conv=notrunc
+nasm $1.asm -o LOADER.BIN
+./mount.sh
+./cp.sh
+./umount.sh
 
