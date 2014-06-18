@@ -33,7 +33,6 @@ image: all building
 	
 buildimg:
 	dd if=$(BOOTER) of=a.img bs=512 count=1 conv=notrunc
-	sudo umount /mnt/floppy/
 	sudo mount -o loop a.img /mnt/floppy/
 	sudo cp -fv $(LOADER) /mnt/floppy/
 	sudo cp -fv $(KERNEL) /mnt/floppy/
