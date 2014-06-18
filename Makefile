@@ -1,6 +1,6 @@
 
 ASM		= nasm
-CC		= gcc -c
+CC		= gcc 
 LD		= ld
 BOOTER		= boot/boot.bin
 LOADER		= boot/loader.bin
@@ -9,10 +9,10 @@ TARGETS		= $(BOOTER) $(LOADER) $(KERNEL)
 ASM_BOOTER_ARGS	= -I boot/include/ # 后面的"/"务必加上！还得我花了好多时间！
 ASM_LOADER_ARGS	= -I boot/include/ # 后面的"/"务必加上！还得我花了好多时间！
 ASM_KERNEL_ARGS	= -f elf
-CC_KERNEL_ARGS	= -I include/
+CC_KERNEL_ARGS	= -I include/ -c -fno-builtin
 OBJS		= kernel/kernel.o kernel/start.o kernel/i8259.o kernel/protect.o lib/string.o \
 		lib/kliba.o kernel/main.o kernel/syscall.o kernel/proc.o kernel/clock.o \
-		kernel/global.o kernel/keyboard.o
+		kernel/global.o kernel/keyboard.o kernel/tty.o
 LD_KERNEL_ARGS	= -s -Ttext 0x030400
 
 
@@ -73,10 +73,14 @@ kernel/proc.o: kernel/proc.c include/const.h include/type.h include/proto.h incl
 kernel/clock.o: kernel/clock.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
-kernel/keyboard.o: kernel/keyboard.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h
+kernel/keyboard.o: kernel/keyboard.c include/const.h include/type.h include/proto.h include/global.h \
+			include/string.h include/proc.h  include/keyboard.h include/keymap.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
 kernel/global.o: kernel/global.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h
+	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
+
+kernel/tty.o: kernel/tty.c include/const.h include/type.h include/proto.h include/global.h include/string.h include/proc.h
 	$(CC) $(CC_KERNEL_ARGS)   -o $@ $<
 
 

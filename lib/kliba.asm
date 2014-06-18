@@ -17,6 +17,27 @@ global	out_byte
 global	in_byte
 global	disable_irq
 global	enable_irq
+global	disable_int
+global	enable_int
+
+
+
+;==== disable_int ============================
+; disable_int()
+;=========================================
+disable_int:
+	cli
+	ret
+;==== disable_int End ========================
+
+
+;==== enable_int =============================
+; enable_int()
+;=========================================
+enable_int:
+	sti
+	ret
+;==== enable_int End =========================
 
 
 

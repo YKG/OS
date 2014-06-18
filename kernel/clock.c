@@ -57,6 +57,19 @@ void clock_handler(u32 vector_no)
 
 
 
+void init_clock()
+{
+	/* 初始化PIT */
+	out_byte(TIMER_MODE, RATE_GENERATOR);			/* port: 0x43  value: 00110100 */
+	out_byte(TIMER0, (u8)(TIMER_FREQ/HZ));			/* port: 0x40  低字节 */
+	out_byte(TIMER0, (u8)((TIMER_FREQ/HZ) >> 8));	/* port: 0x40  高字节 */
+
+	put_irq_handler(CLOCK_IRQ, clock_handler);
+	enable_irq(CLOCK_IRQ);
+}
+
+
+
 
 void milli_delay(u32 milli_sec)
 {

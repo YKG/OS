@@ -12,6 +12,7 @@ sys_call_handler	sys_call_table[NR_SYS_CALL] = {sys_get_ticks};
 
 
 TASK				task_table[TASK_SIZE] = {
+					{(u32)task_tty, 0x8000},
 					{(u32)TestA, 0x8000},
 					{(u32)TestB, 0x8000},
 					{(u32)TestC, 0x8000},

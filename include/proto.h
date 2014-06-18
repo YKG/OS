@@ -69,6 +69,15 @@ u32 sys_get_ticks();
 u32 get_ticks();
 void milli_delay(u32 milli_sec);
 void keyboard_handler(u32 vector_no);
+void keyboard_read();
 void init_keyboard();
+void init_clock();
+
+
+void disable_int();
+void enable_int();
+void task_tty();
+
+
 
 #endif
