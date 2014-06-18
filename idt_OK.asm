@@ -20,6 +20,7 @@ BaseBar		equ	501000h
 
 
 [SECTION .gdt]
+LABEL_GDT:
 GDT_DESC:	Descriptor	0, 0, 0
 Normal_DESC:	Descriptor	0, 0ffffh, DA_DRW
 FlatC_DESC:	Descriptor	0, 0ffffh, DA_C | DA_32 | DA_LIMIT_4K
@@ -54,6 +55,41 @@ SelectorDir2	equ	Page_Dir_DESC2 - GDT_DESC
 SelectorTbl2	equ	Page_Tbl_DESC2 - GDT_DESC
 
 
+
+
+
+
+
+
+[SECTION .idt]
+LABEL_IDT:
+
+%rep	32	
+	Gate	SelectorCode32,	SpuriousHandler, 0, DA_386IGate	
+%endrep
+.20h:	Gate	SelectorCode32, ClockHandler,	0, DA_386IGate
+%rep	95	
+	Gate	SelectorCode32,	SpuriousHandler, 0, DA_386IGate	
+%endrep
+.80h:	Gate	SelectorCode32,	UserIntHandler, 0, DA_386IGate	
+
+IdtLen		equ	$ - $$
+IdtPtr		dw	IdtLen - 1
+		dd	0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 [SECTION .stack]
 [BITS	32]
 LABEL_STACK: 
@@ -85,6 +121,9 @@ _ARDS:
 _dwMemBlockCount:	dd	0	
 _dwRAMSize:	dd	0	
 _memChkBuf:	times	512	db	0
+_SavedIdtr:	dw	0
+		dd	0
+_SavedIMREG:	db	0
 
 szPMMessage	equ	_szPMMessage	-	$$
 szTitle		equ	_szTitle	-	$$
@@ -99,7 +138,8 @@ ARDS		equ	_ARDS		-	$$
 dwMemBlockCount	equ	_dwMemBlockCount-	$$
 dwRAMSize	equ	_dwRAMSize	-	$$
 memChkBuf	equ	_memChkBuf	-	$$
-
+SavedIdtr	equ	_SavedIdtr	-	$$
+SavedIMREG	equ	_SavedIMREG	-	$$
 
 DataLen		equ	$ - $$
 
@@ -165,6 +205,10 @@ memChkOK:
 
 
 
+;保存屏蔽中断寄存器 IMREG
+sidt	[_SavedIdtr]
+in	al, 21h
+mov	byte	[_SavedIMREG], al
 
 
 mov	ax, cs
@@ -211,16 +255,25 @@ shr	eax, 16
 mov	byte [Code32_DESC + 4], al
 mov	byte [Code32_DESC + 7], ah
 
-
+;-----------GDT----------------------
 xor	eax, eax
 mov	ax, cs
 shl	eax, 4
-add	eax, GDT_DESC
+add	eax, LABEL_GDT
 mov	dword	[GdtPtr + 2], eax
 
 lgdt	[GdtPtr]
 
+;-----------IDT----------------------
+xor	eax, eax
+mov	ax, cs
+shl	eax, 4
+add	eax, LABEL_IDT
+mov	dword	[IdtPtr + 2], eax
+
 cli
+lidt	[IdtPtr]
+
 
 in	al, 92h
 or	al, 00000010b
@@ -240,6 +293,12 @@ mov	es, ax
 mov	fs, ax
 mov	gs, ax
 mov	ss, ax
+
+
+lidt	[_SavedIdtr]
+mov	al, [_SavedIMREG]
+out	21h, al
+
 
 in	al, 92h
 and	al, 11111101b
@@ -377,8 +436,166 @@ xor	eax, eax
 call	PSwitch
 call	SelectorFlatC:BaseDemo
 
+
+
+call	Init8259A
+int	7fh
+int	80h
+sti
+
+;jmp	$
+xchg	bx, bx
+call	SetRealMode8259A
+
 jmp	SelectorCode16:0
 jmp	$
+
+
+
+
+;==== ClockHandler ========================
+_ClockHandler:
+ClockHandler	equ	_ClockHandler - $$
+	inc	byte	[gs:(80*3 + 75)*2]
+	mov	al, 20h
+	out	20h, al
+	iretd
+
+;==== ClockHandler End========================
+
+
+
+;==== UserIntHandler ========================
+_UserIntHandler:
+UserIntHandler	equ	_UserIntHandler - $$
+	mov	ah, 0ch
+	mov	al, 'I'
+	mov	[gs:(80*3 + 75)*2], ax
+	;jmp	$
+	iretd
+
+;==== UserIntHandler End ====================
+
+
+
+;==== SpuriousHandler ========================
+_SpuriousHandler:
+SpuriousHandler	equ	_SpuriousHandler - $$
+	mov	ah, 0ch
+	mov	al, '!'
+	mov	[gs:(80*4 + 75)*2], ax
+	;jmp	$
+	iretd
+
+;==== SpuriousHandler End ====================
+
+
+
+
+;==== SetRealMode8259A ==============
+
+SetRealMode8259A:
+	mov	ax, SelectorData
+	mov	fs, ax
+	
+	mov	al, 00010101b
+	out	020h, al
+	call	io_delay
+
+	mov	al, 008h
+	out	021h, al
+	call	io_delay
+
+	mov	al, 004h
+	out	021h, al
+	call	io_delay
+
+	mov	al, 001h
+	out	021h, al
+	call	io_delay
+
+	mov	al, [fs:SavedIMREG]
+	out	021h, al
+	call	io_delay
+
+	ret
+
+;==== SetRealMode8259A End ==============
+
+
+
+
+
+
+
+
+
+
+;==== Init8259A ==============
+Init8259A:
+mov	al, 011h
+out	020h, al
+call	io_delay
+
+out	0a0h, al
+call	io_delay
+
+
+mov	al, 020h
+out	021h, al
+call	io_delay
+
+mov	al, 028h
+out	0a1h, al
+call	io_delay
+
+
+mov	al, 004h
+out	021h, al
+call	io_delay
+
+mov	al, 002h
+out	0a1h, al
+call	io_delay
+
+
+mov	al, 001h
+out	021h, al
+call	io_delay
+
+out	0a1h, al
+call	io_delay
+
+; - - - - - - - -
+mov	al, 11111110b
+out	021h, al
+call	io_delay
+
+mov	al, 11111111b
+out	0a1h, al
+call	io_delay
+
+ret
+
+;---------------
+io_delay:
+	nop
+	nop
+	nop
+	nop
+	ret
+
+
+;==== Init8259A  End ==========
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,8 +1,4 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;  这个做了一次分页，可正常运行，没有页表切换 ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 %include "pm.inc"
@@ -14,6 +10,8 @@ jmp	LABEL_BEGIN
 
 PageDirBase	equ	200000h
 PageTblBase	equ	201000h
+PageDirBase2	equ	210000h
+PageTblBase2	equ	211000h
 
 BaseDemo	equ	401000h
 BaseFoo		equ	401000h
@@ -22,11 +20,12 @@ BaseBar		equ	501000h
 
 
 [SECTION .gdt]
+LABEL_GDT:
 GDT_DESC:	Descriptor	0, 0, 0
 Normal_DESC:	Descriptor	0, 0ffffh, DA_DRW
 FlatC_DESC:	Descriptor	0, 0ffffh, DA_C | DA_32 | DA_LIMIT_4K
 FlatRW_DESC:	Descriptor	0, 0ffffh, DA_DRW| DA_LIMIT_4K
-Code32_DESC:	Descriptor	0, Code32Len - 1, DA_CR + DA_32 ; 该段需要有读属性(DA_CR)，不能仅仅是DA_C
+Code32_DESC:	Descriptor	0, Code32Len - 1, DA_CR + DA_32 ;DA_CR, 不能是DA_C
 Code16_DESC:	Descriptor	0, 0ffffh, DA_C	; 一定要注意段界限，保证为0ffffh
 VIDEO_DESC:	Descriptor	0b8000h, 0ffffh, DA_DRW
 Stack_DESC:	Descriptor	0, TopOfStack, DA_DRW
@@ -34,6 +33,8 @@ Data_DESC:	Descriptor	0, DataLen - 1, DA_DRW
 Page_Dir_DESC:	Descriptor	PageDirBase, 4095, DA_DRW  
 Page_Tbl_DESC:	Descriptor	PageTblBase, 1023, DA_DRW | DA_LIMIT_4K
 ;Page_Tbl_DESC:	Descriptor	PageTblBase, 4096*8 - 1, DA_DRW 
+Page_Dir_DESC2:	Descriptor	PageDirBase2, 4095, DA_DRW  
+Page_Tbl_DESC2:	Descriptor	PageTblBase2, 4096*8 - 1, DA_DRW 
 
 
 GdtLen	equ	$ - $$
@@ -50,6 +51,38 @@ SelectorData	equ	Data_DESC - GDT_DESC
 SelectorStack	equ	Stack_DESC - GDT_DESC
 SelectorDir	equ	Page_Dir_DESC - GDT_DESC
 SelectorTbl	equ	Page_Tbl_DESC - GDT_DESC
+SelectorDir2	equ	Page_Dir_DESC2 - GDT_DESC
+SelectorTbl2	equ	Page_Tbl_DESC2 - GDT_DESC
+
+
+
+
+
+
+
+
+[SECTION .idt]
+LABEL_IDT:
+
+%rep	255
+	Gate	SelectorCode32,	SpuriousHandler, 0, DA_386IGate	
+%endrep
+
+IdtLen		equ	$ - $$
+IdtPtr		dw	IdtLen - 1
+		dd	0
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 [SECTION .stack]
@@ -209,16 +242,25 @@ shr	eax, 16
 mov	byte [Code32_DESC + 4], al
 mov	byte [Code32_DESC + 7], ah
 
-
+;-----------GDT----------------------
 xor	eax, eax
 mov	ax, cs
 shl	eax, 4
-add	eax, GDT_DESC
+add	eax, LABEL_GDT
 mov	dword	[GdtPtr + 2], eax
 
 lgdt	[GdtPtr]
 
+;-----------IDT----------------------
+xor	eax, eax
+mov	ax, cs
+shl	eax, 4
+add	eax, LABEL_IDT
+mov	dword	[IdtPtr + 2], eax
+
 cli
+lidt	[IdtPtr]
+
 
 in	al, 92h
 or	al, 00000010b
@@ -318,7 +360,7 @@ add	esp, 4
 
 
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 xchg	bx, bx
 ;放置Foo的代码到BaseFoo(0x401000)处
 mov	ax, SelectorFlatRW
@@ -335,7 +377,26 @@ mov	cx, Foo_Len
 	inc	esi
 loop	.cpyfoo
 
+;-------------------------------------
 
+xchg	bx, bx
+;放置Bar的代码到BaseBar(0x501000)处
+mov	ax, SelectorFlatRW
+mov	es, ax
+mov	esi, BaseBar
+mov	ax, cs
+mov	ds, ax
+mov	edi, LABEL_Bar - $$
+mov	cx, Bar_Len
+.cpybar:
+	mov	byte	al, [ds:edi]
+	mov	byte	[es:esi], al
+	inc	edi
+	inc	esi
+loop	.cpybar
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 
@@ -345,12 +406,113 @@ call	SetupPaging
 xchg	bx, bx
 call	SelectorFlatC:BaseDemo
 
+
+
+;xchg	bx, bx
+
+;call	SelectorFlatC:BaseBar
+
+xchg	bx, bx
+xor	eax, eax
+call	PSwitch
+call	SelectorFlatC:BaseDemo
+
+
+
+call	Init8259A
+int	80h
+
+
+
+
 jmp	SelectorCode16:0
 jmp	$
 
 
 
+;==== SpuriousHandler ========================
+_SpuriousHandler:
+SpuriousHandler	equ	_SpuriousHandler - $$
+	mov	ah, 0ch
+	mov	al, '!'
+	mov	[gs:(80*5 + 75)*2], ax
+	jmp	$
+	iretd
 
+;==== SpuriousHandler End ====================
+
+
+
+;==== Init8259A ==============
+Init8259A:
+mov	al, 011h
+out	020h, al
+call	io_delay
+
+out	0a0h, al
+call	io_delay
+
+
+mov	al, 020h
+out	021h, al
+call	io_delay
+
+mov	al, 028h
+out	0a1h, al
+call	io_delay
+
+
+mov	al, 004h
+out	021h, al
+call	io_delay
+
+mov	al, 002h
+out	0a1h, al
+call	io_delay
+
+
+mov	al, 001h
+out	021h, al
+call	io_delay
+
+out	0a1h, al
+call	io_delay
+
+; - - - - - - - -
+mov	al, 11111110b
+out	021h, al
+call	io_delay
+
+mov	al, 11111111b
+out	0a1h, al
+call	io_delay
+
+ret
+
+;---------------
+io_delay:
+	nop
+	nop
+	nop
+	nop
+	ret
+
+
+;==== Init8259A  End ==========
+
+
+
+
+
+
+
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 LABEL_Foo:
 mov	ax, SelectorVideo
 mov	gs, ax
@@ -374,7 +536,33 @@ retf
 Foo_Len		equ	$ - LABEL_Foo
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+LABEL_Bar:
+mov	ax, SelectorVideo
+mov	gs, ax
 
+mov	edi, (80*21 + 0)*2
+mov	ah, 0ch
+mov	al, 'B'
+mov	[gs:edi], ax
+
+mov	edi, (80*21 + 1)*2
+mov	ah, 0ch
+mov	al, 'a'
+mov	[gs:edi], ax
+
+mov	edi, (80*21 + 2)*2
+mov	ah, 0ch
+mov	al, 'r'
+mov	[gs:edi], ax
+
+retf
+Bar_Len		equ	$ - LABEL_Bar
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 DispMemSize:
 
 push	esi
@@ -423,13 +611,99 @@ ret
 
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Page Switch
+
+PSwitch:
+
+;xchg	bx, bx
+
+mov	ax, SelectorData
+mov	ds, ax
+mov	es, ax
+
+xor	edx, edx
+mov	dword eax, [dwRAMSize]
+mov	ebx, 400000h
+div	ebx
+mov	ecx, eax
+test	edx, edx
+jz	.no_remainder2
+inc	ecx
+.no_remainder2:
+push	ecx
+
+;xchg	bx, bx
+
+mov	ax, SelectorDir2
+mov	es, ax
+mov	edi, 0
+xor	eax, eax
+mov	eax, PageTblBase2 | PG_P | PG_USU | PG_RWW
+;mov	cx, 1024
+sdir2:	
+	mov	[es:edi], eax
+	add	edi, 4
+	add	eax, 4*1024
+loop	sdir2
 
 
+;xchg	bx, bx
+
+mov	ax, SelectorTbl2
+mov	es, ax
+mov	edi, 0
+pop	eax
+mov	ebx, 1024
+mul	ebx
+mov	ecx, eax
+xor	eax, eax
+mov	eax, PG_P | PG_USU | PG_RWW
+stbl2:	
+	mov	[es:edi], eax
+	add	edi, 4
+	add	eax, 4*1024
+loop	stbl2
+
+
+
+
+;xchg	bx, bx
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;修改页表;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+mov	ax, SelectorTbl2
+mov	es, ax
+mov	eax, BaseDemo
+shr	eax, 10		; 即 eax /= 4*1024; eax *= 4
+mov	edi, eax
+mov	dword	eax, [es:edi]	;这句只为看看原来存的是什么
+mov	dword	[es:edi], BaseBar | 7
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;修改结束;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+mov	eax, PageDirBase2
+mov	cr3, eax
+mov	eax, cr0
+or	eax, 80000000h
+mov	cr0, eax
+
+jmp	short .nop2
+.nop2:
+	nop
+ret
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Start Paging...
 
 SetupPaging:
 
-xchg	bx, bx
+;xchg	bx, bx
 mov	ax, SelectorData
 mov	ds, ax
 mov	es, ax
@@ -445,7 +719,7 @@ inc	ecx
 .no_remainder:
 push	ecx
 
-xchg	bx, bx
+;xchg	bx, bx
 
 mov	ax, SelectorDir
 mov	es, ax
@@ -460,7 +734,7 @@ sdir:
 loop	sdir
 
 
-xchg	bx, bx
+;xchg	bx, bx
 
 mov	ax, SelectorTbl
 mov	es, ax
@@ -479,7 +753,7 @@ loop	stbl
 
 
 
-xchg	bx, bx
+;xchg	bx, bx
 mov	eax, PageDirBase
 mov	cr3, eax
 mov	eax, cr0

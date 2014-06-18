@@ -1,3 +1,5 @@
+#magic_break: enabled=1
+
 ###############################################################
 # Configuration file for Bochs
 ###############################################################
@@ -16,7 +18,6 @@ floppyb: 1_44=pm.img, status=inserted
 # choose the boot disk.
 boot: a
 
-magic_break: enabled=1
 # where do we send log messages?
 # log: bochsout.txt
 
