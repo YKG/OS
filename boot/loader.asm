@@ -48,7 +48,7 @@ LABEL_GDT:
 	GDT_DESC:	Descriptor	0, 0, 0
 	;Normal_DESC:	Descriptor	0, 0ffffh, DA_DRW
 	FlatC_DESC:	Descriptor	0, 0ffffh, DA_C | DA_32 | DA_LIMIT_4K
-	FlatRW_DESC:	Descriptor	0, 0ffffh, DA_DRW| DA_LIMIT_4K
+	FlatRW_DESC:	Descriptor	0, 0ffffh, DA_DRW| DA_32 |DA_LIMIT_4K	; 把我害死了 DA_32 ！
 	VIDEO_DESC:	Descriptor	0b8000h, 0ffffh, DA_DRW
 	Code32_DESC:	Descriptor	0, Code32Len - 1, DA_CR + DA_32 ;DA_CR, 不能是DA_C
 	Code16_DESC:	Descriptor	0, 0ffffh, DA_C	; 一定要注意段界限，保证为0ffffh	
@@ -321,9 +321,9 @@ memChkOK:
 ; 设置GDT, IDT，准备跳入保护模式
 ;-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	;保存屏蔽中断寄存器 IMREG
-	sidt	[_SavedIdtr]
-	in	al, 21h
-	mov	byte	[_SavedIMREG], al
+;	sidt	[_SavedIdtr]
+;	in	al, 21h
+;	mov	byte	[_SavedIMREG], al
 
 
 	xor	eax, eax
@@ -713,10 +713,10 @@ LABEL_SEG_CODE32:
 
 
 	; 中断实验
-	call	Init8259A
-	int	7fh
-	int	80h
-	sti
+;	call	Init8259A
+;	int	7fh
+;	int	80h
+;	sti
 
 
 

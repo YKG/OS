@@ -1,3 +1,7 @@
+TopOfStack		equ	07c00h	; 不能是 0100h
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;程序功能：
 ;	找磁盘上是否有LOADER.BIN文件
@@ -34,7 +38,7 @@ LABEL_START:
 	mov	ax, cs
 	mov	ds, ax
 	mov	ss, ax
-	mov	sp, 0100h
+	mov	sp, TopOfStack
 
 
 	mov	ah, 000h

@@ -1,16 +1,9 @@
-SelectorFlatRW	equ	16
-SelectorVideo	equ	24
-
-
-extern disp_pos
-
-;[section .data]
-;wDispPos:	dw	0
+extern	disp_pos
 
 [section .text]
 global	DispString
+global	DispInt
 
-global	disp_color_str
 
 
 ;==== DispString =============================
@@ -24,8 +17,7 @@ DispString:
 	push	edi
 	
 	mov	dword esi, [esp + 20 + 4]	; 字符串指针, 记得 eip！
-;	mov	word di, [wDispPos]
-	mov	word di, [disp_pos]
+	mov	dword edi, [disp_pos]
 
 .NextChar:	
 	mov	byte al, [ds:esi]
@@ -52,7 +44,7 @@ DispString:
 	jmp	.NextChar
 
 .DispComplete:
-	mov	word [disp_pos], di
+	mov	dword [disp_pos], edi
 
 	pop	edi
 	pop	esi
@@ -71,87 +63,64 @@ DispString:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-; ========================================================================
-;                  void disp_color_str(char * info, int color);
-; ========================================================================
-disp_color_str:
-	push	ebp
-	mov	ebp, esp
-
-	mov	esi, [ebp + 8]	; pszInfo
-	mov	edi, [disp_pos]
-	mov	ah, [ebp + 12]	; color
-.1:
-	lodsb
-	test	al, al
-	jz	.2
-	cmp	al, 0Ah	; 是回车吗?
-	jnz	.3
+;==== DispInt ================================
+; DispInt(int i)
+;=========================================
+DispInt:
 	push	eax
-	mov	eax, edi
-	mov	bl, 160
-	div	bl
-	and	eax, 0FFh
-	inc	eax
-	mov	bl, 160
-	mul	bl
-	mov	edi, eax
-	pop	eax
-	jmp	.1
-.3:
+	push	ebx
+	push	ecx
+	push	esi
+	push	edi
+	
+
+	mov	dword esi, [esp + 20 + 4]	; 记得 eip！
+	mov	dword edi, [disp_pos]
+
+	mov	ah, 0Bh				; 青色	
+	mov	al, '0'
 	mov	[gs:edi], ax
 	add	edi, 2
-	jmp	.1
+	mov	al, 'x'
+	mov	[gs:edi], ax
+	add	edi, 2
 
-.2:
-	mov	[disp_pos], edi
 
-	pop	ebp
+	mov	ch, 8				; 8 = 32/4, 一个字符包含 4bit
+	mov	cl, 32				
+.next4bit:
+	test	ch, ch
+	jz	.DispIntComplete
+	mov	ebx, esi
+	sub	cl, 4
+	shr	ebx, cl				; 移位操作只能使用cl寄存器或立即数
+	and	bl, 00Fh
+	mov	al, bl
+	add	al, '0'
+	cmp	bl, 10
+	jb	.LowerThan10
+	mov	al, bl
+	sub	al, 10
+	add	al, 'A'
+.LowerThan10:
+	mov	[gs:edi], ax
+	add	edi, 2
+	dec	ch
+	jmp	.next4bit
+
+
+.DispIntComplete:
+	mov	dword [disp_pos], edi
+
+	pop	edi
+	pop	esi
+	pop	ecx
+	pop	ebx
+	pop	eax
+
 	ret
 
+;==== DispInt End ============================
 
 
 
