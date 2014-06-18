@@ -225,15 +225,12 @@ xchg	bx, bx
 	push	es
 	push	fs
 	push	gs
-;	mov	ax, SelectorFlatRW
 	mov	ax, ss
 	mov	ds, ax
 	mov	es, ax
 	mov	fs, ax
 
 	
-	
-
 	inc	byte [gs:0]
 	mov	al, 0x20	; 发送EOI
 	out	0x20, al
@@ -244,10 +241,10 @@ xchg	bx, bx
 ;	jne	.reenter
 
 	mov	esp, TopOfStack
-	push	.restart_v2
+	push	restart
 	jmp	.2
 .1:	
-	push	.reenter_v2
+	push	reenter
 .2:
 	sti
 	push	0		; int 0
@@ -257,26 +254,6 @@ xchg	bx, bx
 
 	ret
 
-.restart_v2:
-	mov	esp, [p_proc_ready]
-	lea	eax, [esp + TOP_REGS_OF_PROC]
-	mov	dword [tss + 4], eax	; esp0
-
-	mov	ax, [esp + SELECTOR_OF_PROC]
-	lldt	ax
-
-.reenter_v2:
-	dec	dword [ds:k_reenter]
-
-	pop	gs
-	pop	fs
-	pop	es
-	pop	ds
-	popad
-	
-	add	esp, 4		; 越过 error_code
-
-	iretd
 
 
 
@@ -352,20 +329,16 @@ hwinterupt:
 
 
 
-	
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 restart:
-xchg	bx, bx
 	mov	esp, [p_proc_ready]
 	lea	eax, [esp + TOP_REGS_OF_PROC]
 	mov	dword [tss + 4], eax	; esp0
-	
+
 	mov	ax, [esp + SELECTOR_OF_PROC]
 	lldt	ax
 
+reenter:
+	dec	dword [ds:k_reenter]
 
 	pop	gs
 	pop	fs
@@ -376,7 +349,33 @@ xchg	bx, bx
 	add	esp, 4		; 越过 error_code
 
 	iretd
+	
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 这是原来的 restart ， 修改后的见上
+;- - - - - - - - - - - - - - - - - -
+;
+;restart:
+;xchg	bx, bx
+;	mov	esp, [p_proc_ready]
+;	lea	eax, [esp + TOP_REGS_OF_PROC]
+;	mov	dword [tss + 4], eax	; esp0
+;	
+;	mov	ax, [esp + SELECTOR_OF_PROC]
+;	lldt	ax
+;
+;
+;	pop	gs
+;	pop	fs
+;	pop	es
+;	pop	ds
+;	popad
+;	
+;	add	esp, 4		; 越过 error_code
+;
+;	iretd
+;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 

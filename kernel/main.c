@@ -64,7 +64,7 @@ void kernel_main()
 	}
 
 
-	k_reenter = -1;									
+	k_reenter = 0;									/* 从 实验h 开始，初值为 0 */
 
 	p_proc_ready = proc_table;
 
