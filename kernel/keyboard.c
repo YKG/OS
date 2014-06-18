@@ -8,6 +8,15 @@
 
 
 static KB_INPUT	kb_in;
+static int	column;
+static int	make_code;
+static int	code_with_E0;
+static int	shift_l;
+static int	shift_r;
+static int	alt_l;
+static int	alt_r;	
+static int	ctrl_l;	
+static int	ctrl_r;	
 
 void keyboard_handler(u32 irq)
 {	
@@ -47,17 +56,106 @@ void keyboard_read()
 		enable_int();
 
 
+//		output[0] = keymap[scan_code * 3];
+//		disp_int(scan_code);
+//		disp_color_str(output, 0x07);
+
 		if (scan_code == 0xE0)
 		{
+			code_with_E0 = 1;
 		}
 		else if (scan_code == 0xE1)
 		{
 		}
 		else
-		{
-			if (!(scan_code & 0x80))	/* 如果不是Break Code */
+		{	
+			column = 0;
+			make_code = 0;
+			if (scan_code == 0x2A)		/* SHIFT_L Make Code */
 			{
-				output[0] = keymap[scan_code * 3];
+				shift_l = 1;
+			}
+			else if(scan_code == 0xAA)	/* SHIFT_L Break Code */
+			{
+				shift_l = 0;
+			}			
+			else if (scan_code == 0x36)		/* SHIFT_R Make Code */
+			{
+				shift_r = 1;
+			}
+			else if(scan_code == 0xb6)	/* SHIFT_R Break Code */
+			{
+				shift_r = 0;
+			}
+			else if (scan_code == 0x38)		/* ALT_L Make Code */
+			{				
+				if (code_with_E0)
+				{
+					alt_r = 1;
+					code_with_E0 = 0;
+				}
+				else
+				{
+					alt_l = 1;
+				}
+			}
+			else if(scan_code == 0xb8)	/* ALT_L Break Code */
+			{
+				if (code_with_E0)
+				{
+					alt_r = 0;
+					code_with_E0 = 0;
+				}
+				else
+				{
+					alt_l = 0;
+				}
+			}
+			else if (scan_code == 0x2C)		/* CTRL_L Make Code */
+			{
+				ctrl_l = 1;
+			}
+			else if(scan_code == 0xAC)	/* CTRL_L Break Code */
+			{
+				ctrl_l = 0;
+			}
+			else if (scan_code == 0x1D)		/* CTRL_R Make Code */
+			{
+				if (code_with_E0)
+				{
+					code_with_E0 = 0;
+				}
+				ctrl_r = 1;
+			}
+			else if(scan_code == 0x9D)	/* CTRL_R Break Code */
+			{
+				if (code_with_E0)
+				{
+					code_with_E0 = 0;
+				}
+				ctrl_r = 0;
+			}
+			else
+			{
+				make_code = 1;
+			}
+			/*
+			alt_l	0x38			0xb8
+			alt_r	0xe0 0x38		0xe0 0xb8
+			ctrl_l	0x2c			0xac
+			ctrl_r	0xe0 0x1d		0xe0 0x9d
+			*/
+
+
+			if (shift_l || shift_r)
+			{
+				column = 1;
+			}
+
+
+			if (make_code && !(scan_code & 0x80))	/* 如果不是Break Code */
+			{
+				output[0] = keymap[scan_code * 3 + column];
 				disp_color_str(output, 0x0c);
 //				disp_int(scan_code);
 			}
