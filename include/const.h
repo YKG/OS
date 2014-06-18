@@ -4,6 +4,8 @@
 	#define GDT_SIZE		128
 	#define IDT_SIZE		256
 	#define LDT_SIZE		128
+	#define PROC_SIZE		128
+	#define	TASK_STACK_SIZE	0x50000
 
 
 	#define	DA_386CGate		0x08C
@@ -14,6 +16,12 @@
 	#define	DA_DPL1			0x20
 	#define	DA_DPL2			0x40
 	#define	DA_DPL3			0x60
+
+	#define	SA_RPL0			0x00
+	#define	SA_RPL1			0x01
+	#define	SA_RPL2			0x02
+	#define	SA_RPL3			0x03
+
 
 
 	#define	DA_32			0x4000

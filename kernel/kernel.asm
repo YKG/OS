@@ -1,8 +1,10 @@
-SelectorFlatC	equ	8	; gdt[1]
-SELECTOR_TSS	equ	028h	; gdt[5]
-SA_TIL		equ	4
-SA_RPL1		equ	1
-
+SelectorFlatC		equ	8	; gdt[1]
+SelectorFlatRW		equ	010h	; gdt[2]
+SELECTOR_TSS		equ	028h	; gdt[5]
+SA_TIL			equ	4
+SA_RPL1			equ	1
+TOP_REGS_OF_PROC	equ	18*4	; 18个寄存器(PROCESS)
+SELECTOR_OF_PROC	equ	18*4	; 选择子在PROCESS中的偏移
 
 extern	kernel_main
 extern	cstart
@@ -16,6 +18,7 @@ extern	DispString
 extern	DispInt
 extern	delay
 extern	k_reenter
+extern	p_proc_ready
 
 [section .bss]
 resb	2*1024
@@ -223,11 +226,20 @@ exception:
 
 hwint00:
 xchg	bx, bx
+	sub	esp, 4		; 越过 error_code
 	pushad
 	push	ds
 	push	es
 	push	fs
 	push	gs
+
+	
+	mov	esp, TopOfStack
+	mov	ax, SelectorFlatRW
+	mov	ds, ax
+	mov	es, ax
+	mov	fs, ax
+
 
 	inc	byte [gs:0]
 	mov	al, 0x20	; 发送EOI
@@ -250,11 +262,15 @@ xchg	bx, bx
 .reenter:	
 	dec	dword [ds:k_reenter]
 
+	mov	esp, [p_proc_ready]
+
 	pop	gs
 	pop	fs
 	pop	es
 	pop	ds
 	popad
+	
+	add	esp, 4		; 越过 error_code
 
 	iretd
 
@@ -333,23 +349,24 @@ hwinterupt:
 
 
 
+	
 
 
-
-
-
-restart:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 这个部分是我自己写的，所有的设置都放在 这里了。 作者的
+; 放在 kernel_main.asm 里面
+restart_ykg:
+;restart:
 xchg	bx, bx
-;	lea	ebx, [gdt_ptr]	; 等价与 mov ebx, gdt_ptr
-
-
-	mov	dword [tss + 4], esp	; esp0
-;	xor	eax, eax
-;	mov	ax, ss
+	
 	mov	word [tss + 8], ss	; ss0
+	mov	dword eax, [ds:p_proc_ready]
+	add	eax, TOP_REGS_OF_PROC
+	mov	dword [tss + 4], eax	; esp0
+	
 
-
-	mov	ax, 0x20	; LDT 选择子
+	mov	dword ebx, [ds:p_proc_ready]
+	mov	word ax, [ds:ebx + SELECTOR_OF_PROC]	; LDT选择子
 	lldt	ax
 
 	
@@ -357,25 +374,68 @@ xchg	bx, bx
 	mov	ds, ax
 	mov	es, ax
 
-	push	eax		; SS
+	push	eax					; SS
 	push	TopOfTaskStack
-	push	0 + SA_RPL1 + SA_TIL
+	push	0 + SA_RPL1 + SA_TIL			; CS
 	push	TestA
 xchg	bx, bx
 	retf	
 
-	jmp	0 + SA_RPL1 + SA_TIL:TestA
 
 
 
 
-	mov	ah, 0ch
-	mov	al, 'S'
-	mov	[gs:(80*15 + 5)*2], ax
 
-	call	TestA
+;- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+; 这个是参照中断处理写的
+restartx:
+xchg	bx, bx
+	
+	mov	word [tss + 8], ss	; ss0
+	mov	dword eax, [ds:p_proc_ready]
+	add	eax, TOP_REGS_OF_PROC
+	mov	dword [tss + 4], eax	; esp0
+	
 
-	jmp	$
+	mov	dword ebx, [ds:p_proc_ready]
+	mov	word ax, [ds:ebx + SELECTOR_OF_PROC]	; LDT选择子
+	lldt	ax
+
+	
+	mov	ax, 8 + SA_RPL1 + SA_TIL
+	mov	ds, ax
+	mov	es, ax
+
+	push	eax					; SS
+	push	TopOfTaskStack
+	push	0 + SA_RPL1 + SA_TIL			; CS
+	push	TestA
+xchg	bx, bx
+	retf	
+
+
+
+restart:
+xchg	bx, bx
+	mov	esp, [p_proc_ready]
+	lea	eax, [esp + TOP_REGS_OF_PROC]
+	mov	dword [tss + 4], eax	; esp0
+	
+	mov	ax, [esp + SELECTOR_OF_PROC]
+	lldt	ax
+
+
+	pop	gs
+	pop	fs
+	pop	es
+	pop	ds
+	popad
+	
+	add	esp, 4		; 越过 error_code
+
+	iretd
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 

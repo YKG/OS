@@ -11,11 +11,16 @@ GATE		idt[IDT_SIZE];
 
 
 
-DESCRIPTOR	ldts[LDT_SIZE];
+//DESCRIPTOR	ldts[LDT_SIZE];
 
 
 TSS			tss;
 
 u32			k_reenter;	/* 处理中断重入 */
+
+PROCESS		proc_table[PROC_SIZE];
+PROCESS		* p_proc_ready;
+
+u32			task_stack[TASK_STACK_SIZE];
 
 #endif

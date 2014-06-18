@@ -60,4 +60,36 @@ typedef	struct p_tss
 
 
 
+
+
+
+typedef	struct s_proc
+{	
+	u32	gs;
+	u32	fs;
+	u32	es;
+	u32	ds;
+
+	u32	edi;	/* pushad */
+	u32	esi;
+	u32	ebp;
+	u32 kernel_esp;
+	u32	ebx;
+	u32	edx;
+	u32	ecx;
+	u32	eax;
+
+	u32	error_code; /* 发生中断时自动填充 */ /* 忘记手动越过这个地方，调了好久才发现 ——2011-7-7 19:18:58 */
+	u32	eip;
+	u32	cs;	
+	u32	eflags;
+	u32	esp;
+	u32 ss;
+
+	u16	proc_selector;
+	
+	DESCRIPTOR	ldts[2];
+} PROCESS;
+
+
 #endif
