@@ -96,6 +96,7 @@ typedef	struct s_proc
 typedef	struct p_task
 {
 	u32	initial_eip;	
+	u32	stack_size;
 } TASK;
 
 

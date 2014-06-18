@@ -96,6 +96,8 @@ csinit:
 xchg	bx, bx
 	jmp	SelectorFlatC:kernel_main
 
+	jmp	$
+
 	hlt
 
 
@@ -262,8 +264,6 @@ xchg	bx, bx
 	call	clock_handler
 	add	esp, 4
 
-	cli
-
 ;================================================================================ 
 ; 重大修订, 更新至此
 ;- - - - - - - - - - - - - - - - - - -
@@ -289,6 +289,8 @@ xchg	bx, bx
 ;	mov	dword [tss + 4], eax	; esp0
 ;
 ;================================================================================
+
+
 	pop	gs
 	pop	fs
 	pop	es

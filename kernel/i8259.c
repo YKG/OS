@@ -41,6 +41,7 @@ void spurious_irq(u32 vector_no)
 
 void clock_handler(u32 vector_no)
 {	
+	disp_color_str("#", 0x0b);
 	if (p_proc_ready < &proc_table[n_tasks - 1])
 	{
 		p_proc_ready++;
