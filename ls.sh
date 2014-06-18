@@ -1,3 +1,3 @@
 ./mount.sh
-ls /mnt/floppy
+ls -l /mnt/floppy
 ./umount.sh
