@@ -91,7 +91,7 @@ _start:
 	jmp	SelectorFlatC:csinit
 
 csinit:
-	sti
+;	sti		; 不应该在此处开中断，不然会引起时钟中断，那时候进程还没有呢
 
 xchg	bx, bx
 	jmp	SelectorFlatC:kernel_main
